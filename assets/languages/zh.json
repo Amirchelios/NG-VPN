@@ -7,6 +7,9 @@
   },
   "app": {
     "title": "NEXG VPN",
+    "your_profile": "您的资料",
+    "profile_status": "状态",
+    "active_server": "活动服务器",
     "subtitle": "免费VPN客户端"
   },
   "navigation": {
@@ -392,6 +395,7 @@
     "country": "{country}",
     "provider": "{provider}",
     "ping": "{ping}毫秒",
+        "fast_pick": "极速推荐",
     "uptime": "运行时间：{uptime}%",
     "copy_details": "复制详情",
     "copy_url": "复制URL",

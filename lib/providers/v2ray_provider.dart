@@ -2,10 +2,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_v2ray_client/flutter_v2ray.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/v2ray_config.dart';
 import '../models/subscription.dart';
 import '../services/v2ray_service.dart';
 import '../services/server_service.dart';
+import '../utils/auto_select_util.dart';
 
 class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   final V2RayService _v2rayService = V2RayService();
@@ -884,6 +886,39 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
             // Don't fail the connection for this
           }
 
+          final connectionHealthy = await _verifyConnectionQuality();
+          if (!connectionHealthy) {
+            debugPrint(
+              'Connectivity verification failed after connecting to ${config.remark}',
+            );
+            try {
+              await _v2rayService.disconnect();
+            } catch (e) {
+              debugPrint('Error disconnecting after failed verification: $e');
+            }
+            for (final cfg in _configs) {
+              cfg.isConnected = false;
+            }
+            _selectedConfig = null;
+            try {
+              await _v2rayService.saveConfigs(_configs);
+            } catch (e) {
+              debugPrint('Error saving configs after failed verification: $e');
+            }
+            _setError(
+              'Connected server did not pass the internet reachability test. Trying another server...',
+            );
+            await _removeFaultyConfig(config);
+            _isConnecting = false;
+            notifyListeners();
+            Future.microtask(
+              () => _connectToBestAvailableServer(
+                excludeIds: {config.id},
+              ),
+            );
+            return;
+          }
+
           debugPrint('Successfully connected to ${config.remark}');
         } catch (e) {
           debugPrint('Error in post-connection setup: $e');
@@ -950,6 +985,52 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   void _setError(String error) {
     _errorMessage = error;
     notifyListeners();
+  }
+
+  Future<bool> _verifyConnectionQuality() async {
+    try {
+      final response = await http
+          .get(Uri.parse('https://www.google.com/generate_204'))
+          .timeout(const Duration(seconds: 10));
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Connectivity verification error: $e');
+      return false;
+    }
+  }
+
+  Future<void> _removeFaultyConfig(V2RayConfig config) async {
+    _configs.removeWhere((cfg) => cfg.id == config.id);
+    try {
+      await _v2rayService.saveConfigs(_configs);
+    } catch (e) {
+      debugPrint('Error saving configs after removing faulty server: $e');
+    }
+  }
+
+  Future<bool> _connectToBestAvailableServer({Set<String>? excludeIds}) async {
+    final exclude = excludeIds ?? {};
+    final candidates =
+        _configs.where((cfg) => !exclude.contains(cfg.id)).toList();
+    if (candidates.isEmpty) {
+      _setError('No other servers available to connect.');
+      return false;
+    }
+
+    final result = await AutoSelectUtil.runAutoSelect(
+      candidates,
+      _v2rayService,
+    );
+
+    if (result.selectedConfig == null) {
+      _setError(
+        result.errorMessage ?? 'No suitable server available for fallback.',
+      );
+      return false;
+    }
+
+    await connectToServer(result.selectedConfig!, _isProxyMode);
+    return true;
   }
 
   void clearError() {

@@ -6,7 +6,10 @@
     "direction": "ltr"
   },
   "app": {
-    "title": "NEXG VPN",
+        "title": "NEXG VPN",
+        "your_profile": "Votre Profil",
+        "profile_status": "Statut",
+        "active_server": "Serveur Actif",
     "subtitle": "Client VPN Gratuit"
   },
   "navigation": {
@@ -392,6 +395,7 @@
     "country": "{country}",
     "provider": "{provider}",
     "ping": "{ping} ms",
+        "fast_pick": "Choix rapide",
     "uptime": "Disponibilité : {uptime}%",
     "copy_details": "Copier les Détails",
     "copy_url": "Copier l'URL",

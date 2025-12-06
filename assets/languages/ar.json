@@ -6,7 +6,10 @@
     "direction": "rtl"
   },
   "app": {
-    "title": "NEXG VPN",
+        "title": "NEXG VPN",
+        "your_profile": "ملفك الشخصي",
+        "profile_status": "الحالة",
+        "active_server": "الخادم النشط",
     "subtitle": "عميل VPN مجاني"
   },
   "navigation": {
@@ -392,6 +395,7 @@
     "country": "{country}",
     "provider": "{provider}",
     "ping": "{ping} مللي ثانية",
+        "fast_pick": "اختيار سريع",
     "uptime": "مدة التشغيل: {uptime}%",
     "copy_details": "نسخ التفاصيل",
     "copy_url": "نسخ الرابط",

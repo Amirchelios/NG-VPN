@@ -105,6 +105,7 @@ class _TelegramProxyScreenState extends State<TelegramProxyScreen> {
                   context,
                   proxy,
                   wallpaperService.isGlassBackgroundEnabled,
+                  index < 5,
                 );
               },
             );
@@ -118,7 +119,10 @@ class _TelegramProxyScreenState extends State<TelegramProxyScreen> {
     BuildContext context,
     TelegramProxy proxy,
     bool isGlassBackground,
+    bool isTopPick,
   ) {
+    final measuredPing = proxy.measuredPing ?? proxy.ping;
+    final hasValidPing = measuredPing > 0;
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       color: isGlassBackground
@@ -169,193 +173,99 @@ class _TelegramProxyScreenState extends State<TelegramProxyScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-
-            // Country and provider info
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.public, size: 18, color: Colors.blue),
-                      const SizedBox(width: 6),
-                      Text(
-                        context.tr(
-                          TranslationKeys.telegramProxyCountry,
-                          parameters: {'country': proxy.country},
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue,
-                        ),
+            if (isTopPick)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bolt, color: Colors.greenAccent, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.tr(TranslationKeys.telegramProxyFastPick),
+                      style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.business,
-                          size: 18,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            context.tr(
-                              TranslationKeys.telegramProxyProvider,
-                              parameters: {'provider': proxy.provider},
-                            ),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.amber,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            if (isTopPick) const SizedBox(height: 12),
+
             const SizedBox(height: 16),
 
-            // Uptime indicator
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.blueGrey.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.access_time, size: 18, color: Colors.grey),
-                  const SizedBox(width: 6),
-                  Text(
-                    context.tr(
-                      TranslationKeys.telegramProxyUptime,
-                      parameters: {'uptime': proxy.uptime.toString()},
-                    ),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                    ),
+                  Icon(
+                    Icons.speed,
+                    color: hasValidPing ? Colors.greenAccent : Colors.orange,
+                    size: 18,
                   ),
                   const SizedBox(width: 8),
-                  // Uptime progress bar
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: proxy.uptime / 100,
-                        backgroundColor: Colors.grey.withOpacity(0.3),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          proxy.uptime > 80
-                              ? Colors.green
-                              : proxy.uptime > 60
-                              ? Colors.orange
-                              : Colors.red,
-                        ),
-                      ),
+                  Text(
+                    context.tr(
+                      TranslationKeys.telegramProxyPing,
+                      parameters: {'ping': hasValidPing ? '$measuredPing' : '--'},
+                    ),
+                    style: TextStyle(
+                      color: hasValidPing
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+
+            const SizedBox(height: 12),
 
             // Action buttons
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.copy, size: 20),
-                        label: Text(
-                          context.tr(TranslationKeys.telegramProxyCopyDetails),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.link, size: 20),
+                  label: Text(
+                    context.tr(TranslationKeys.telegramProxyCopyUrl),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(
+                      ClipboardData(text: proxy.telegramHttpsUrl),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          context.tr(
+                            TranslationKeys.telegramProxyUrlCopied,
                           ),
                         ),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(
-                              text:
-                                  'Server: ${proxy.host}\nPort: ${proxy.port}\nSecret: ${proxy.secret}',
-                            ),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                context.tr(
-                                  TranslationKeys.telegramProxyDetailsCopied,
-                                ),
-                              ),
-                              backgroundColor: AppTheme.primaryBlue,
-                            ),
-                          );
-                        },
+                        backgroundColor: AppTheme.primaryBlue,
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.link, size: 20),
-                        label: Text(
-                          context.tr(TranslationKeys.telegramProxyCopyUrl),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: proxy.telegramHttpsUrl),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                context.tr(
-                                  TranslationKeys.telegramProxyUrlCopied,
-                                ),
-                              ),
-                              backgroundColor: AppTheme.primaryBlue,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
@@ -375,20 +285,27 @@ class _TelegramProxyScreenState extends State<TelegramProxyScreen> {
                     ),
                   ),
                   onPressed: () async {
-                    final url = proxy.telegramUrl;
+                    final httpsUrl = Uri.parse(proxy.telegramHttpsUrl);
+                    final tgUrl = Uri.parse(proxy.telegramUrl);
                     try {
-                      final uri = Uri.parse(url);
-                      if (await canLaunchUrl(uri)) {
+                      if (await canLaunchUrl(httpsUrl)) {
                         await launchUrl(
-                          uri,
+                          httpsUrl,
                           mode: LaunchMode.externalApplication,
                         );
-                      } else {
-                        ErrorSnackbar.show(
-                          context,
-                          context.tr(TranslationKeys.telegramProxyNotInstalled),
-                        );
+                        return;
                       }
+                      if (await canLaunchUrl(tgUrl)) {
+                        await launchUrl(
+                          tgUrl,
+                          mode: LaunchMode.externalApplication,
+                        );
+                        return;
+                      }
+                      ErrorSnackbar.show(
+                        context,
+                        context.tr(TranslationKeys.telegramProxyNotInstalled),
+                      );
                     } catch (e) {
                       ErrorSnackbar.show(
                         context,

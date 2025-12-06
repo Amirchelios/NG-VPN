@@ -509,26 +509,31 @@ class _HomeScreenState extends State<HomeScreen> {
                             physics: const BouncingScrollPhysics(),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(vertical: 20),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // Server selector (now includes Proxy Mode Switch)
-                                  const ServerSelector(),
-
-                                  const SizedBox(height: 20),
-
-                                  // Connection button
-                                  const ConnectionButton(),
-
-                                  const SizedBox(height: 40),
-
-                                  // Connection stats
-                                  if (hasActiveConfig)
-                                    _buildConnectionStats(v2rayProvider),
-                                ],
-                              ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Consumer<V2RayProvider>(
+                                  builder: (context, provider, _) =>
+                                      _buildProfileCard(context, provider),
+                                ),
+                                const SizedBox(height: 16),
+                                FractionallySizedBox(
+                                  widthFactor: 0.94,
+                                  child: hasActiveConfig
+                                      ? _buildConnectionStats(v2rayProvider)
+                                      : const ServerSelector(),
+                                ),
+                                const SizedBox(height: 24),
+                                FractionallySizedBox(
+                                  widthFactor: 0.85,
+                                  child: const ConnectionButton(),
+                                ),
+                                const SizedBox(height: 32),
+                              ],
                             ),
                           ),
+                        ),
                   ),
                 ],
               ),
@@ -536,6 +541,138 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildProfileCard(BuildContext context, V2RayProvider provider) {
+    final activeConfig = provider.activeConfig;
+    final selectedConfig = provider.selectedConfig;
+    final displayConfig = activeConfig ?? selectedConfig;
+    final serverName = displayConfig?.remark ??
+        context.tr(TranslationKeys.homeNoServerSelected);
+    final statusText = activeConfig != null
+        ? context.tr(TranslationKeys.homeConnected)
+        : context.tr(TranslationKeys.homeDisconnected);
+    final statusColor =
+        activeConfig != null ? AppTheme.primaryGreen : Colors.orangeAccent;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.surfaceCard),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.tr(TranslationKeys.homeYourProfile),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: AppTheme.primaryBlue.withOpacity(0.15),
+                child: const Icon(Icons.person, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      serverName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${context.tr(TranslationKeys.homeProfileStatus)}: $statusText',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => _shareV2RayLink(context),
+                icon: const Icon(Icons.share_outlined),
+                color: AppTheme.primaryBlue,
+                tooltip: context.tr(TranslationKeys.commonShare),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildProfileInfoChip(
+                icon: Icons.cloud_outlined,
+                label: context.tr(TranslationKeys.homeActiveServer),
+                value: serverName,
+              ),
+              _buildProfileInfoChip(
+                icon: Icons.layers_outlined,
+                label: context.tr(TranslationKeys.homeSubscriptions),
+                value: provider.subscriptions.length.toString(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileInfoChip({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primaryBlue),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textGrey,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -560,13 +697,16 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final ipInfo = v2rayService.ipInfo;
+        final upload = v2rayService.getFormattedUpload();
+        final download = v2rayService.getFormattedDownload();
+        final totalTraffic = v2rayService.getFormattedTotalTraffic();
 
         return Selector<WallpaperService, bool>(
           selector: (_, service) => service.isGlassBackgroundEnabled,
           builder: (context, isGlassBackground, __) {
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isGlassBackground
                     ? AppTheme.cardDark.withOpacity(0.7)
@@ -574,48 +714,81 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    context.tr('home.connection_statistics'),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        context.tr('home.connection_statistics'),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          foregroundColor: AppTheme.primaryBlue,
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () => _checkConfig(provider),
+                        icon: const Icon(Icons.shield_outlined, size: 16),
+                        label: Text(
+                          context.tr(TranslationKeys.homeCheckConfig),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _buildStatRow(
-                    Icons.timer,
-                    context.tr(TranslationKeys.homeConnectionTime),
-                    v2rayService.getFormattedConnectedTime(),
-                  ),
-                  const Divider(height: 24),
-
-                  // Total traffic usage - updated every second
-                  _buildTrafficRow(
-                    context.tr('home.traffic_usage'),
-                    v2rayService.getFormattedUpload(),
-                    v2rayService.getFormattedDownload(),
-                    v2rayService.getFormattedTotalTraffic(),
-                  ),
-                  const Divider(height: 24),
-                  // Show IP info without error messages
-                  _buildIpInfoRow(
-                    IpInfo(
-                      ip: ipInfo?.ip ?? '...',
-                      country: ipInfo?.country ?? '...',
-                      city: ipInfo?.city ?? '...',
-                      countryCode: ipInfo?.countryCode ?? '',
-                      success: true,
-                    ),
-                    provider,
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiniMetric(
+                          icon: Icons.timer_outlined,
+                          label: context.tr(TranslationKeys.homeConnectionTime),
+                          primaryValue:
+                              v2rayService.getFormattedConnectedTime(),
+                          status: provider.isConnecting
+                              ? context.tr(TranslationKeys.homeConnecting)
+                              : context.tr(TranslationKeys.homeConnected),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildMiniMetric(
+                          icon: Icons.data_usage,
+                          label: context.tr(TranslationKeys.homeTrafficUsage),
+                          primaryValue: totalTraffic,
+                          status:
+                              '${context.tr(TranslationKeys.homeUpload)}: $upload',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildMiniMetric(
+                          icon: Icons.public,
+                          label: context.tr(TranslationKeys.homeIpAddress),
+                          primaryValue: ipInfo?.ip ?? '...',
+                          status:
+                              '${ipInfo?.country ?? '...'} • ${ipInfo?.city ?? '...'}',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -626,140 +799,115 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildIpInfoRow(IpInfo ipInfo, V2RayProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+  Widget _buildQuickMetric({
+    required IconData icon,
+    required String label,
+    required String primaryValue,
+    String? secondaryValue,
+  }) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 160, maxWidth: 220),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.public, size: 18, color: AppTheme.textGrey),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '${ipInfo.country} - ${ipInfo.city}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
+            Row(
+              children: [
+                Icon(icon, size: 18, color: AppTheme.primaryBlue),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textGrey,
+                    ),
+                  ),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
             ),
-            const SizedBox(width: 8),
-            InkWell(
-              onTap: () => _shareV2RayLink(context),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(4.0),
-                child: Icon(Icons.share, size: 18, color: AppTheme.primaryBlue),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Check Config button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _checkConfig(provider),
-            icon: const Icon(Icons.check, size: 18),
-            label: Text(context.tr('home.check_config')),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryBlue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.textGrey),
-        const SizedBox(width: 12),
-        Text(label, style: const TextStyle(color: AppTheme.textGrey)),
-        const Spacer(),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryBlue,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTrafficRow(
-    String label,
-    String upload,
-    String download,
-    String total,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.data_usage, size: 18, color: AppTheme.textGrey),
-            const SizedBox(width: 12),
-            Text(label, style: const TextStyle(color: AppTheme.textGrey)),
-            const Spacer(),
+            const SizedBox(height: 6),
             Text(
-              total,
+              primaryValue,
               style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryBlue,
                 fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 30),
-          child: Row(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      upload,
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const Text(
-                      ' ↑',
-                      style: TextStyle(color: Colors.orange, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      download,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                    const Text(
-                      ' ↓',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
+            if (secondaryValue != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                secondaryValue,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textGrey,
                 ),
               ),
             ],
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildMiniMetric({
+    required IconData icon,
+    required String label,
+    required String primaryValue,
+    required String status,
+  }) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.04)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 16, color: AppTheme.primaryBlue),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textGrey,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              primaryValue,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              status,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.primaryGreen,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

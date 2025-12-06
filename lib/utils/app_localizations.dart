@@ -156,6 +156,9 @@ class TranslationKeys {
 
   // Home
   static const String homeTitle = 'home.title';
+  static const String homeYourProfile = 'home.your_profile';
+  static const String homeProfileStatus = 'home.profile_status';
+  static const String homeActiveServer = 'home.active_server';
   static const String homeConnect = 'home.connect';
   static const String homeDisconnect = 'home.disconnect';
   static const String homeConnecting = 'home.connecting';
@@ -733,6 +736,7 @@ class TranslationKeys {
   static const String telegramProxyProvider = 'telegram_proxy.provider';
   static const String telegramProxyPing = 'telegram_proxy.ping';
   static const String telegramProxyUptime = 'telegram_proxy.uptime';
+  static const String telegramProxyFastPick = 'telegram_proxy.fast_pick';
   static const String telegramProxyCopyDetails = 'telegram_proxy.copy_details';
   static const String telegramProxyCopyUrl = 'telegram_proxy.copy_url';
   static const String telegramProxyDetailsCopied =

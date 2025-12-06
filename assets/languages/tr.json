@@ -7,6 +7,9 @@
     },
     "app": {
         "title": "NEXG VPN",
+        "your_profile": "Profiliniz",
+        "profile_status": "Durum",
+        "active_server": "Aktif Sunucu",
         "subtitle": "Ücretsiz VPN İstemcisi"
     },
     "navigation": {
@@ -392,6 +395,7 @@
         "country": "{country}",
         "provider": "{provider}",
         "ping": "{ping} ms",
+        "fast_pick": "Hızlı seçim",
         "uptime": "Çalışma Süresi: {uptime}%",
         "copy_details": "Detayları Kopyala",
         "copy_url": "URL'yi Kopyala",

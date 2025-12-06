@@ -10,6 +10,7 @@ class TelegramProxy {
   final int addTime;
   final int updateTime;
   final int ping;
+  final int? measuredPing;
 
   TelegramProxy({
     required this.host,
@@ -21,6 +22,7 @@ class TelegramProxy {
     required this.addTime,
     required this.updateTime,
     required this.ping,
+    this.measuredPing,
   });
 
   factory TelegramProxy.fromJson(Map<String, dynamic> json) {
@@ -49,6 +51,7 @@ class TelegramProxy {
       addTime: toInt(json['addTime']),
       updateTime: toInt(json['updateTime']),
       ping: toInt(json['ping']),
+      measuredPing: null,
     );
   }
 
@@ -66,6 +69,21 @@ class TelegramProxy {
     };
   }
 
+  TelegramProxy copyWith({int? measuredPing}) {
+    return TelegramProxy(
+      host: host,
+      port: port,
+      secret: secret,
+      country: country,
+      provider: provider,
+      uptime: uptime,
+      addTime: addTime,
+      updateTime: updateTime,
+      ping: ping,
+      measuredPing: measuredPing ?? this.measuredPing,
+    );
+  }
+
   String get telegramUrl {
     return 'tg://proxy?server=$host&port=$port&secret=$secret';
   }
@@ -76,7 +94,7 @@ class TelegramProxy {
 
   @override
   String toString() {
-    return 'TelegramProxy{host: $host, port: $port, country: $country, ping: $ping}';
+    return 'TelegramProxy{host: $host, port: $port, country: $country, ping: $ping, measuredPing: $measuredPing}';
   }
 }
 

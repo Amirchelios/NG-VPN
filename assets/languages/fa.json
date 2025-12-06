@@ -7,6 +7,9 @@
     },
     "app": {
         "title": "NEXG VPN",
+        "your_profile": "پروفایل شما",
+        "profile_status": "وضعیت",
+        "active_server": "سرور فعال",
         "subtitle": "کلاینت VPN رایگان"
     },
     "navigation": {
@@ -392,6 +395,7 @@
         "country": "{country}",
         "provider": "{provider}",
         "ping": "{ping} میلی‌ثانیه",
+        "fast_pick": "انتخاب سریع",
         "uptime": "زمان کارکرد: {uptime}%",
         "copy_details": "کپی جزئیات",
         "copy_url": "کپی URL",
