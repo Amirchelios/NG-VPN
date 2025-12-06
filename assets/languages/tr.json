@@ -6,7 +6,7 @@
         "direction": "ltr"
     },
     "app": {
-        "title": "ProxyCloud",
+        "title": "NEXG VPN",
         "subtitle": "Ücretsiz VPN İstemcisi"
     },
     "navigation": {
@@ -56,7 +56,7 @@
         "select_language": "Dil Seçin"
     },
     "home": {
-        "title": "Proxy Cloud",
+        "title": "NEXG VPN",
         "connect": "Bağlan",
         "disconnect": "Bağlantıyı Kes",
         "connecting": "Bağlanıyor...",
@@ -158,12 +158,12 @@
         "tagline": "Açık Kaynak, Ücretsiz, Hızlı ve Gizli VPN",
         "developed_by": "Geliştirici",
         "developers": "Hossein Pira",
-        "description": "ProxyCloud, V2Ray VPN teknolojisi ve Telegram MTProto proxy'leri aracılığıyla güvenli, özel internet erişimi sağlayan açık kaynaklı bir VPN uygulamasıdır. Hızlı, sınırsız ve abonelik ücreti olmadan tamamen ücretsizdir. Gizliliğiniz bizim önceliğimizdir.",
+        "description": "NEXG VPN, V2Ray VPN teknolojisi ve Telegram MTProto proxy'leri aracılığıyla güvenli, özel internet erişimi sağlayan açık kaynaklı bir VPN uygulamasıdır. Hızlı, sınırsız ve abonelik ücreti olmadan tamamen ücretsizdir. Gizliliğiniz bizim önceliğimizdir.",
         "telegram_channel": "Telegram Kanalı",
         "github_source": "GitHub Kaynağı",
         "privacy_policy": "Gizlilik Politikası",
         "terms_of_service": "Hizmet Şartları",
-        "copyright": "© 2025 Proxy Cloud"
+        "copyright": "© 2025 NEXG VPN"
     },
     "backup_restore": {
         "title": "Yedekle ve Geri Yükle",
@@ -182,9 +182,9 @@
     "battery_settings": {
         "title": "Pil ve Arka Plan Erişimi",
         "header_title": "Arka Plan Erişimi Yönetimi",
-        "header_description": "ProxyCloud'un düzgün çalışmasını sağlamak için pil optimizasyonu ve arka plan erişimi ayarlarını yönetin.",
+        "header_description": "NEXG VPN'un düzgün çalışmasını sağlamak için pil optimizasyonu ve arka plan erişimi ayarlarını yönetin.",
         "battery_optimization": "Pil Optimizasyonu",
-        "battery_optimization_desc": "Sistemin arka plan etkinliğini sınırlamasını önlemek için ProxyCloud için pil optimizasyonunu devre dışı bırakın.",
+        "battery_optimization_desc": "Sistemin arka plan etkinliğini sınırlamasını önlemek için NEXG VPN için pil optimizasyonunu devre dışı bırakın.",
         "open_battery_optimization": "Pil Optimizasyonunu Aç",
         "general_battery": "Genel Pil Ayarları",
         "general_battery_desc": "Genel pil ve güç yönetimi ayarlarına erişin.",
@@ -359,7 +359,7 @@
         "error_opening_app_settings": "Uygulama ayarları açılırken hata oluştu",
         "skip": "Atla",
         "get_started": "Başlayın",
-        "welcome_title": "Proxy Cloud'a Hoş Geldiniz",
+        "welcome_title": "NEXG VPN'a Hoş Geldiniz",
         "welcome_subtitle": "Hızlı, sınırsız, güvenli ve tamamen ücretsiz açık kaynaklı bir VPN.",
         "privacy_title": "Gizliliğiniz Önemlidir",
         "privacy_subtitle": "Verilerinizi takip etmiyor, saklamıyor veya paylaşmıyoruz. Çevrimiçi etkinliğiniz özel ve güvenli kalır.",
@@ -373,7 +373,7 @@
         "background_access_subtitle": "Daha iyi VPN performansı ve bağlantı kararlılığı için uygulamanın arka planda çalışmasına izin verin.",
         "open_settings": "Ayarları Aç",
         "battery_settings": "Pil Ayarları",
-        "battery_optimization_note": "Uygulama arka plandayken VPN'in bağlı kalmasını sağlamak için ProxyCloud için pil optimizasyonunu devre dışı bırakın.",
+        "battery_optimization_note": "Uygulama arka plandayken VPN'in bağlı kalmasını sağlamak için NEXG VPN için pil optimizasyonunu devre dışı bırakın.",
         "free_to_use_title": "Tamamen Ücretsiz",
         "free_to_use_subtitle": "Bu uygulama tamamen ücretsizdir. Gizli ücretler, abonelikler veya reklamlar yoktur."
     },
@@ -381,7 +381,7 @@
     "select_language_title": "Dil Seçin",
     "select_language_subtitle": "Uygulama arayüzü için tercih ettiğiniz dili seçin",
     "internet_for_all": "İnternet herkes için; ya da kimse için değil!",
-    "channels_and_sponsors_title": "ProxyCloud Kanalları ve Sponsorları",
+    "channels_and_sponsors_title": "NEXG VPN Kanalları ve Sponsorları",
     "telegram_proxy": {
         "title": "Telegram Proxy'leri",
         "refresh": "Yenile",
@@ -549,3 +549,4 @@
         "channel": "IRCF"
     }
 }
+

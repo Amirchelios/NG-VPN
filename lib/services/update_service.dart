@@ -1,36 +1,73 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:proxycloud/models/app_update.dart';
 import '../utils/app_localizations.dart';
 
 class UpdateService {
+  UpdateService({Dio? dio})
+      : _dio = dio ??
+            Dio(
+              BaseOptions(
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 10),
+                sendTimeout: const Duration(seconds: 10),
+              ),
+            );
+
   static const String updateUrl =
       'https://raw.githubusercontent.com/code3-dev/ProxyCloud-GUI/refs/heads/main/config/mobile.json';
+  static const Duration _cacheDuration = Duration(hours: 4);
 
-  // Check for updates
-  Future<AppUpdate?> checkForUpdates() async {
+  final Dio _dio;
+  CancelToken? _activeToken;
+  AppUpdate? _cachedUpdate;
+  DateTime? _lastFetchedAt;
+
+  /// Check for updates with short timeouts, caching and cancellation support.
+  Future<AppUpdate?> checkForUpdates({bool forceRefresh = false}) async {
+    final bool isCacheValid = _lastFetchedAt != null &&
+        DateTime.now().difference(_lastFetchedAt!) < _cacheDuration;
+    if (!forceRefresh && isCacheValid) {
+      return _cachedUpdate;
+    }
+
+    _activeToken?.cancel('Superseded by a newer update request');
+    final cancelToken = CancelToken();
+    _activeToken = cancelToken;
+
     try {
-      final response = await http
-          .get(Uri.parse(updateUrl))
-          .timeout(
-            const Duration(seconds: 60),
-            onTimeout: () {
-              throw Exception(
-                'Network timeout: Check your internet connection',
-              );
-            },
-          );
-      if (response.statusCode == 200) {
-        final AppUpdate? update = AppUpdate.fromJsonString(response.body);
+      final response = await _dio.get<String>(
+        updateUrl,
+        cancelToken: cancelToken,
+        options: Options(
+          responseType: ResponseType.plain,
+          headers: const {'Cache-Control': 'no-cache'},
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final AppUpdate? update = AppUpdate.fromJsonString(response.data!);
+        _lastFetchedAt = DateTime.now();
         if (update != null && update.hasUpdate()) {
+          _cachedUpdate = update;
           return update;
         }
+        _cachedUpdate = null;
+      }
+      return null;
+    } on DioException catch (e) {
+      if (e.type != DioExceptionType.cancel) {
+        debugPrint('Error checking for updates: ${e.message}');
       }
       return null;
     } catch (e) {
       debugPrint('Error checking for updates: $e');
       return null;
+    } finally {
+      if (_activeToken == cancelToken) {
+        _activeToken = null;
+      }
     }
   }
 
@@ -81,4 +118,11 @@ class UpdateService {
       // For now, keeping the debug print as it's mainly for development
     }
   }
+
+  void cancelPendingRequest() {
+    _activeToken?.cancel('Disposed');
+    _activeToken = null;
+  }
+
+  void dispose() => cancelPendingRequest();
 }

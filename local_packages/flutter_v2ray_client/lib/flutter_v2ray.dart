@@ -8,9 +8,6 @@ import 'package:flutter_v2ray_client/url/url.dart';
 import 'package:flutter_v2ray_client/url/vless.dart';
 import 'package:flutter_v2ray_client/url/vmess.dart';
 
-import '../../../ProxyCloud/local_packages/flutter_v2ray_client/lib/flutter_v2ray.dart' show V2RayURL;
-import '../../../ProxyCloud/local_packages/flutter_v2ray_client/lib/url/url.dart' show V2RayURL;
-import 'flutter_v2ray.dart' show V2RayURL;
 import 'flutter_v2ray_platform_interface.dart';
 import 'model/v2ray_status.dart';
 import 'url/url.dart' show V2RayURL;

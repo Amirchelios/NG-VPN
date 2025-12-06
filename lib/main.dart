@@ -81,6 +81,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    _updateService.dispose();
     _cleanupTimer?.cancel();
     super.dispose();
   }
@@ -102,7 +103,7 @@ class _MyAppState extends State<MyApp> {
       child: Consumer<LanguageProvider>(
         builder: (context, languageProvider, child) {
           return MaterialApp(
-            title: 'Proxy Cloud',
+            title: 'NEXG VPN',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.darkTheme(languageProvider.currentLanguage.code),
             locale: languageProvider.locale,

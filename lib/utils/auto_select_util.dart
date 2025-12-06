@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:proxycloud/models/v2ray_config.dart';
 import 'package:proxycloud/services/v2ray_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart'; // Add this import for debugPrint
 
 class AutoSelectResult {
   final V2RayConfig? selectedConfig;
@@ -25,6 +26,8 @@ class AutoSelectCancellationToken {
 
 class AutoSelectUtil {
   static const String _pingBatchSizeKey = 'ping_batch_size';
+  static const String _savedPingsKey = 'saved_pings';
+  static const Duration _pingCacheDuration = Duration(minutes: 10);
 
   /// Get ping batch size from shared preferences (increased default for faster testing)
   static Future<int> getPingBatchSize() async {
@@ -49,46 +52,87 @@ class AutoSelectUtil {
     AutoSelectCancellationToken? cancellationToken,
   }) async {
     try {
+      final cachedPings = await _loadCachedPings();
+      final Map<String, _CachedPing> workingCache = Map.of(cachedPings);
+
+      V2RayConfig? selectedConfig;
+      int? bestPing;
+
+      // Try to reuse fresh cached ping results first
+      for (final config in configs) {
+        final cached = workingCache[config.id];
+        if (cached != null && cached.isFresh && cached.ping > 0) {
+          if (bestPing == null || cached.ping < bestPing) {
+            selectedConfig = config;
+            bestPing = cached.ping;
+          }
+        }
+      }
+
+      if (selectedConfig != null && bestPing != null && bestPing < 120) {
+        onStatusUpdate?.call(
+          'Using cached server ${selectedConfig.remark} (${bestPing}ms)',
+        );
+        return AutoSelectResult(
+          selectedConfig: selectedConfig,
+          bestPing: bestPing,
+        );
+      }
+
       // Get batch size (increased for faster testing)
       final int batchSize = await getPingBatchSize();
       debugPrint('Using auto-select batch size: $batchSize');
 
       // Notify about starting
-      onStatusUpdate?.call('Testing ${configs.length} servers in batches of $batchSize...');
+      onStatusUpdate?.call(
+        'Testing ${configs.length} servers in batches of $batchSize...',
+      );
 
-      // Variables to track the best server found so far
-      V2RayConfig? selectedConfig;
-      int? bestPing = 10000; // Start with a high value
+      bestPing ??= 10000; // Start with a high value
 
-      // Process servers in larger batches for faster testing
+      // Determine which configs actually need fresh ping tests
+      final List<V2RayConfig> pendingConfigs = configs.where((config) {
+        final cached = workingCache[config.id];
+        if (cached == null) return true;
+        if (!cached.isFresh) return true;
+        if (cached.ping <= 0) return true;
+        return false;
+      }).toList();
+
+      // Prioritize ones with historically better ping
+      pendingConfigs.sort((a, b) {
+        final cachedA = workingCache[a.id];
+        final cachedB = workingCache[b.id];
+        final pingA = cachedA?.ping ?? 100000;
+        final pingB = cachedB?.ping ?? 100000;
+        return pingA.compareTo(pingB);
+      });
+
       int testedOffset = 0;
-      while (testedOffset < configs.length) {
-        // Check for cancellation
+      while (testedOffset < pendingConfigs.length) {
         if (cancellationToken?.isCancelled == true) {
           return AutoSelectResult(errorMessage: 'Auto-select cancelled');
         }
 
-        // Determine how many servers to test in this batch
-        final int serversToTest = min(batchSize, configs.length - testedOffset);
-        final int actualServersToTest = max(1, serversToTest); // Ensure at least 1
-        
-        // Get the configs for this batch
-        final List<V2RayConfig> batchConfigs = configs.sublist(
+        final int serversToTest =
+            min(batchSize, pendingConfigs.length - testedOffset);
+        final int actualServersToTest = max(1, serversToTest);
+
+        final List<V2RayConfig> batchConfigs = pendingConfigs.sublist(
           testedOffset,
-          min(testedOffset + actualServersToTest, configs.length),
+          min(testedOffset + actualServersToTest, pendingConfigs.length),
         );
 
-        // Notify about current batch
-        onStatusUpdate?.call('Testing batch ${testedOffset ~/ batchSize + 1}: ${batchConfigs.length} servers...');
+        onStatusUpdate?.call(
+          'Testing batch ${testedOffset ~/ batchSize + 1}: ${batchConfigs.length} servers...',
+        );
 
-        // Ping all configs in the batch in parallel with optimized settings
         final futures = <Future<MapEntry<V2RayConfig, int?>>>[];
         for (final config in batchConfigs) {
-          // Check for cancellation before starting each ping
           if (cancellationToken?.isCancelled == true) {
             return AutoSelectResult(errorMessage: 'Auto-select cancelled');
           }
-          
+
           futures.add(
             v2rayService
                 .getServerDelay(config, cancellationToken: cancellationToken)
@@ -96,21 +140,17 @@ class AutoSelectUtil {
           );
         }
 
-        // Wait for all configs in the batch to complete with shorter timeout
         final List<MapEntry<V2RayConfig, int?>> results = await Future.wait(
           futures,
         ).timeout(
-          const Duration(seconds: 6), // Reduced timeout for faster response
+          const Duration(seconds: 6),
           onTimeout: () {
-            // Handle timeout case
             debugPrint('Auto-select batch timeout');
-            return []; // Return empty list on timeout
+            return <MapEntry<V2RayConfig, int?>>[];
           },
         );
 
-        // Process results and find the best server in this batch
         for (final result in results) {
-          // Check for cancellation
           if (cancellationToken?.isCancelled == true) {
             return AutoSelectResult(errorMessage: 'Auto-select cancelled');
           }
@@ -118,35 +158,38 @@ class AutoSelectUtil {
           final config = result.key;
           final delay = result.value;
 
-          // Update status with current result
           if (delay != null && delay >= 0) {
-            onStatusUpdate?.call('✓ ${config.remark}: ${delay}ms');
-            
-            // Check if this is the best server so far
+            onStatusUpdate?.call('⚡ ${config.remark}: ${delay}ms');
+            workingCache[config.id] = _CachedPing(ping: delay);
+
             if (delay < (bestPing ?? 10000)) {
               selectedConfig = config;
               bestPing = delay;
-              
-              // If we found a very fast server (< 100ms), we can stop early for maximum speed
+
               if (delay < 100) {
-                onStatusUpdate?.call('Found very fast server (${delay}ms), stopping early...');
+                onStatusUpdate?.call(
+                  'Found very fast server (${delay}ms), stopping early...',
+                );
                 break;
               }
             }
           } else {
-            onStatusUpdate?.call('✗ ${config.remark}: Failed');
+            onStatusUpdate?.call('✖ ${config.remark}: Failed');
+            workingCache[config.id] = _CachedPing(ping: -1);
           }
         }
 
-        // Early exit if we found a good server
         if (selectedConfig != null && (bestPing ?? 10000) < 200) {
-          onStatusUpdate?.call('Found good server (${bestPing}ms), stopping batch testing...');
+          onStatusUpdate?.call(
+            'Found good server (${bestPing}ms), stopping batch testing...',
+          );
           break;
         }
 
-        // Move to the next batch
         testedOffset += actualServersToTest;
       }
+
+      await _saveCachedPings(workingCache);
 
       if (selectedConfig != null && bestPing != null) {
         return AutoSelectResult(
@@ -160,4 +203,69 @@ class AutoSelectUtil {
       return AutoSelectResult(errorMessage: 'Error during auto-select: $e');
     }
   }
+
+  static Future<Map<String, _CachedPing>> _loadCachedPings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_savedPingsKey);
+      if (jsonString == null || jsonString.isEmpty) {
+        return {};
+      }
+
+      final Map<String, dynamic> decoded = jsonDecode(jsonString);
+      final Map<String, _CachedPing> cache = {};
+      decoded.forEach((key, value) {
+        if (value is Map<String, dynamic>) {
+          final ping = value['ping'];
+          final timestamp = value['timestamp'];
+          if (ping is int && timestamp is int) {
+            final cached = _CachedPing(
+              ping: ping,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+            );
+            if (cached.isFresh) {
+              cache[key] = cached;
+            }
+          }
+        }
+      });
+      return cache;
+    } catch (e) {
+      debugPrint('Error loading cached pings: $e');
+      return {};
+    }
+  }
+
+  static Future<void> _saveCachedPings(
+    Map<String, _CachedPing> cache,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final Map<String, dynamic> data = {};
+      cache.forEach((key, value) {
+        if (value.isFresh) {
+          data[key] = value.toJson();
+        }
+      });
+      await prefs.setString(_savedPingsKey, jsonEncode(data));
+    } catch (e) {
+      debugPrint('Error saving cached pings: $e');
+    }
+  }
+}
+
+class _CachedPing {
+  final int ping;
+  final DateTime timestamp;
+
+  _CachedPing({required this.ping, DateTime? timestamp})
+      : timestamp = timestamp ?? DateTime.now();
+
+  bool get isFresh =>
+      DateTime.now().difference(timestamp) < AutoSelectUtil._pingCacheDuration;
+
+  Map<String, dynamic> toJson() => {
+        'ping': ping,
+        'timestamp': timestamp.millisecondsSinceEpoch,
+      };
 }

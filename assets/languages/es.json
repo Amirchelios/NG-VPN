@@ -6,7 +6,7 @@
     "direction": "ltr"
   },
   "app": {
-    "title": "ProxyCloud",
+    "title": "NEXG VPN",
     "subtitle": "Cliente VPN Gratuito"
   },
   "navigation": {
@@ -56,7 +56,7 @@
     "select_language": "Seleccionar Idioma"
   },
   "home": {
-    "title": "Proxy Cloud",
+    "title": "NEXG VPN",
     "connect": "Conectar",
     "disconnect": "Desconectar",
     "connecting": "Conectando...",
@@ -158,12 +158,12 @@
     "tagline": "VPN de Código Abierto, Gratis, Rápida y Privada",
     "developed_by": "Desarrollado por",
     "developers": "Hossein Pira",
-    "description": "ProxyCloud es una aplicación VPN de código abierto que proporciona acceso seguro y privado a internet a través de tecnología VPN V2Ray y proxies MTProto de Telegram. Rápida, ilimitada y completamente gratuita sin tarifas de suscripción. Su privacidad es nuestra prioridad.",
+    "description": "NEXG VPN es una aplicación VPN de código abierto que proporciona acceso seguro y privado a internet a través de tecnología VPN V2Ray y proxies MTProto de Telegram. Rápida, ilimitada y completamente gratuita sin tarifas de suscripción. Su privacidad es nuestra prioridad.",
     "telegram_channel": "Canal de Telegram",
     "github_source": "Código Fuente en GitHub",
     "privacy_policy": "Política de Privacidad",
     "terms_of_service": "Términos de Servicio",
-    "copyright": "© 2025 Proxy Cloud"
+    "copyright": "© 2025 NEXG VPN"
   },
   "backup_restore": {
     "title": "Copia de Seguridad y Restauración",
@@ -182,9 +182,9 @@
   "battery_settings": {
     "title": "Batería y Acceso en Segundo Plano",
     "header_title": "Gestión de Acceso en Segundo Plano",
-    "header_description": "Gestione la optimización de batería y la configuración de acceso en segundo plano para asegurar que ProxyCloud funcione correctamente.",
+    "header_description": "Gestione la optimización de batería y la configuración de acceso en segundo plano para asegurar que NEXG VPN funcione correctamente.",
     "battery_optimization": "Optimización de Batería",
-    "battery_optimization_desc": "Deshabilite la optimización de batería para ProxyCloud para evitar que el sistema limite la actividad en segundo plano.",
+    "battery_optimization_desc": "Deshabilite la optimización de batería para NEXG VPN para evitar que el sistema limite la actividad en segundo plano.",
     "open_battery_optimization": "Abrir Optimización de Batería",
     "general_battery": "Configuración General de Batería",
     "general_battery_desc": "Acceder a la configuración general de batería y gestión de energía.",
@@ -359,7 +359,7 @@
     "error_opening_app_settings": "Error al abrir la configuración de aplicación",
     "skip": "Omitir",
     "get_started": "Comenzar",
-    "welcome_title": "Bienvenido a Proxy Cloud",
+    "welcome_title": "Bienvenido a NEXG VPN",
     "welcome_subtitle": "Una VPN de código abierto que es rápida, ilimitada, segura y completamente gratuita.",
     "privacy_title": "Su Privacidad Es Importante",
     "privacy_subtitle": "No rastreamos, almacenamos ni compartimos sus datos. Su actividad en línea permanece privada y segura.",
@@ -373,7 +373,7 @@
     "background_access_subtitle": "Permita que la aplicación se ejecute en segundo plano para un mejor rendimiento de la VPN y estabilidad de conexión.",
     "open_settings": "Abrir Configuración",
     "battery_settings": "Configuración de Batería",
-    "battery_optimization_note": "Deshabilite la optimización de batería para ProxyCloud para asegurar que la VPN permanezca conectada mientras la aplicación está en segundo plano.",
+    "battery_optimization_note": "Deshabilite la optimización de batería para NEXG VPN para asegurar que la VPN permanezca conectada mientras la aplicación está en segundo plano.",
     "free_to_use_title": "Completamente Gratis",
     "free_to_use_subtitle": "Esta aplicación es completamente gratuita de usar. Sin tarifas ocultas, sin suscripciones, sin anuncios."
   },
@@ -381,7 +381,7 @@
   "select_language_title": "Seleccionar Idioma",
   "select_language_subtitle": "Elija su idioma preferido para la interfaz de la aplicación",
   "internet_for_all": "¡Internet para todos; o para nadie!",
-  "channels_and_sponsors_title": "Canales y Patrocinadores de ProxyCloud",
+  "channels_and_sponsors_title": "Canales y Patrocinadores de NEXG VPN",
   "telegram_proxy": {
     "title": "Proxies de Telegram",
     "refresh": "Actualizar",
@@ -549,3 +549,4 @@
     "channel": "IRCF"
   }
 }
+

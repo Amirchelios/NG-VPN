@@ -6,7 +6,7 @@
     "direction": "rtl"
   },
   "app": {
-    "title": "ProxyCloud",
+    "title": "NEXG VPN",
     "subtitle": "عميل VPN مجاني"
   },
   "navigation": {
@@ -56,7 +56,7 @@
     "select_language": "اختر اللغة"
   },
   "home": {
-    "title": "Proxy Cloud",
+    "title": "NEXG VPN",
     "connect": "اتصال",
     "disconnect": "قطع الاتصال",
     "connecting": "جاري الاتصال...",
@@ -158,12 +158,12 @@
     "tagline": "VPN مفتوح المصدر ومجاني وسريع وآمن",
     "developed_by": "تم تطويره بواسطة",
     "developers": "Hossein Pira",
-    "description": "ProxyCloud هو تطبيق VPN مفتوح المصدر يوفر وصولاً آمناً وخاصاً إلى الإنترنت من خلال تقنية VPN V2Ray وبروكسيات MTProto تيليجرام. سريع ولا محدود ومجاني تمامًا بدون رسوم اشتراك. خصوصيتك هي أولويتنا.",
+    "description": "NEXG VPN هو تطبيق VPN مفتوح المصدر يوفر وصولاً آمناً وخاصاً إلى الإنترنت من خلال تقنية VPN V2Ray وبروكسيات MTProto تيليجرام. سريع ولا محدود ومجاني تمامًا بدون رسوم اشتراك. خصوصيتك هي أولويتنا.",
     "telegram_channel": "قناة تيليجرام",
     "github_source": "الكود المصدري على GitHub",
     "privacy_policy": "سياسة الخصوصية",
     "terms_of_service": "شروط الخدمة",
-    "copyright": "© 2025 Proxy Cloud"
+    "copyright": "© 2025 NEXG VPN"
   },
   "backup_restore": {
     "title": "النسخ الاحتياطي والاستعادة",
@@ -182,9 +182,9 @@
   "battery_settings": {
     "title": "البطارية والوصول إلى الخلفية",
     "header_title": "إدارة الوصول إلى الخلفية",
-    "header_description": "إدارة تحسين البطارية وإعدادات الوصول إلى الخلفية لضمان عمل ProxyCloud بشكل صحيح.",
+    "header_description": "إدارة تحسين البطارية وإعدادات الوصول إلى الخلفية لضمان عمل NEXG VPN بشكل صحيح.",
     "battery_optimization": "تحسين البطارية",
-    "battery_optimization_desc": "تعطيل تحسين البطارية لـ ProxyCloud لمنع النظام من تقييد النشاط في الخلفية.",
+    "battery_optimization_desc": "تعطيل تحسين البطارية لـ NEXG VPN لمنع النظام من تقييد النشاط في الخلفية.",
     "open_battery_optimization": "فتح تحسين البطارية",
     "general_battery": "إعدادات البطارية العامة",
     "general_battery_desc": "الوصول إلى إعدادات البطارية وإدارة الطاقة العامة.",
@@ -359,7 +359,7 @@
     "error_opening_app_settings": "خطأ في فتح إعدادات التطبيق",
     "skip": "تخطي",
     "get_started": "البدء",
-    "welcome_title": "مرحبًا بك في Proxy Cloud",
+    "welcome_title": "مرحبًا بك في NEXG VPN",
     "welcome_subtitle": "VPN مفتوح المصدر سريع ولا محدود وآمن ومجاني تمامًا.",
     "privacy_title": "خصوصيتك مهمة",
     "privacy_subtitle": "نحن لا نتتبع أو نخزن أو نشارك بياناتك. تبقى نشاطك على الإنترنت خاصًا وآمنًا.",
@@ -373,7 +373,7 @@
     "background_access_subtitle": "اسمح للتطبيق بالعمل في الخلفية لأداء أفضل لـ VPN واستقرار الاتصال.",
     "open_settings": "فتح الإعدادات",
     "battery_settings": "إعدادات البطارية",
-    "battery_optimization_note": "تعطيل تحسين البطارية لـ ProxyCloud لضمان بقاء VPN متصل أثناء عمل التطبيق في الخلفية.",
+    "battery_optimization_note": "تعطيل تحسين البطارية لـ NEXG VPN لضمان بقاء VPN متصل أثناء عمل التطبيق في الخلفية.",
     "free_to_use_title": "مجاني تمامًا",
     "free_to_use_subtitle": "هذا التطبيق مجاني تمامًا للاستخدام. بدون رسوم مخفية، بدون اشتراكات، بدون إعلانات."
   },
@@ -381,7 +381,7 @@
   "select_language_title": "اختر اللغة",
   "select_language_subtitle": "اختر لغتك المفضلة لواجهة التطبيق",
   "internet_for_all": "الإنترنت للجميع؛ أو للا أحد!",
-  "channels_and_sponsors_title": "قنوات ورعاة ProxyCloud",
+  "channels_and_sponsors_title": "قنوات ورعاة NEXG VPN",
   "telegram_proxy": {
     "title": "بروكسيات تيليجرام",
     "refresh": "تحديث",
@@ -557,3 +557,4 @@
     "channel": "IRCF"
   }
 }
+

@@ -803,7 +803,7 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                // ProxyCloud Channel Button
+                // Telegram Channel Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -839,7 +839,7 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
                       height: 24,
                     ),
                     label: const Text(
-                      'ProxyCloud',
+                      'NEXG VPN',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

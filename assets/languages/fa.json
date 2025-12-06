@@ -6,7 +6,7 @@
         "direction": "rtl"
     },
     "app": {
-        "title": "ProxyCloud",
+        "title": "NEXG VPN",
         "subtitle": "کلاینت VPN رایگان"
     },
     "navigation": {
@@ -56,7 +56,7 @@
         "select_language": "انتخاب زبان"
     },
     "home": {
-        "title": "Proxy Cloud",
+        "title": "NEXG VPN",
         "connect": "اتصال",
         "disconnect": "قطع اتصال",
         "connecting": "در حال اتصال...",
@@ -158,12 +158,12 @@
         "tagline": "VPN منبع باز، رایگان، سریع و خصوصی",
         "developed_by": "توسعه داده شده توسط",
         "developers": "حسین پیرا",
-        "description": "ProxyCloud یک برنامه VPN منبع باز است که دسترسی امن و خصوصی به اینترنت را از طریق فناوری V2Ray VPN و پروکسی‌های MTProto تلگرام فراهم می‌کند. سریع، نامحدود و کاملاً رایگان بدون هزینه اشتراک. حریم خصوصی شما اولویت ماست.",
+        "description": "NEXG VPN یک برنامه VPN منبع باز است که دسترسی امن و خصوصی به اینترنت را از طریق فناوری V2Ray VPN و پروکسی‌های MTProto تلگرام فراهم می‌کند. سریع، نامحدود و کاملاً رایگان بدون هزینه اشتراک. حریم خصوصی شما اولویت ماست.",
         "telegram_channel": "کانال تلگرام",
         "github_source": "منبع گیت‌هاب",
         "privacy_policy": "سیاست حفظ حریم خصوصی",
         "terms_of_service": "شرایط خدمات",
-        "copyright": "© 2025 Proxy Cloud"
+        "copyright": "© 2025 NEXG VPN"
     },
     "backup_restore": {
         "title": "پشتیبان‌گیری و بازیابی",
@@ -182,9 +182,9 @@
     "battery_settings": {
         "title": "باتری و دسترسی پس‌زمینه",
         "header_title": "مدیریت دسترسی پس‌زمینه",
-        "header_description": "بهینه‌سازی باتری و تنظیمات دسترسی پس‌زمینه را مدیریت کنید تا ProxyCloud به درستی کار کند.",
+        "header_description": "بهینه‌سازی باتری و تنظیمات دسترسی پس‌زمینه را مدیریت کنید تا NEXG VPN به درستی کار کند.",
         "battery_optimization": "بهینه‌سازی باتری",
-        "battery_optimization_desc": "بهینه‌سازی باتری را برای ProxyCloud غیرفعال کنید تا سیستم فعالیت پس‌زمینه را محدود نکند.",
+        "battery_optimization_desc": "بهینه‌سازی باتری را برای NEXG VPN غیرفعال کنید تا سیستم فعالیت پس‌زمینه را محدود نکند.",
         "open_battery_optimization": "باز کردن بهینه‌سازی باتری",
         "general_battery": "تنظیمات عمومی باتری",
         "general_battery_desc": "دسترسی به تنظیمات عمومی باتری و مدیریت انرژی.",
@@ -359,7 +359,7 @@
         "error_opening_app_settings": "خطا در باز کردن تنظیمات برنامه",
         "skip": "رد کردن",
         "get_started": "شروع کنید",
-        "welcome_title": "به Proxy Cloud خوش آمدید",
+        "welcome_title": "به NEXG VPN خوش آمدید",
         "welcome_subtitle": "یک VPN منبع باز که سریع، نامحدود، امن و کاملاً رایگان است.",
         "privacy_title": "حریم خصوصی شما مهم است",
         "privacy_subtitle": "ما داده‌های شما را ردیابی، ذخیره یا به اشتراک نمی‌گذاریم. فعالیت آنلاین شما خصوصی و امن باقی می‌ماند.",
@@ -373,7 +373,7 @@
         "background_access_subtitle": "به برنامه اجازه دهید در پس‌زمینه اجرا شود تا عملکرد VPN و پایداری اتصال بهتری داشته باشد.",
         "open_settings": "باز کردن تنظیمات",
         "battery_settings": "تنظیمات باتری",
-        "battery_optimization_note": "بهینه‌سازی باتری را برای ProxyCloud غیرفعال کنید تا اطمینان حاصل شود که VPN در حین اجرای برنامه در پس‌زمینه متصل باقی می‌ماند.",
+        "battery_optimization_note": "بهینه‌سازی باتری را برای NEXG VPN غیرفعال کنید تا اطمینان حاصل شود که VPN در حین اجرای برنامه در پس‌زمینه متصل باقی می‌ماند.",
         "free_to_use_title": "کاملاً رایگان",
         "free_to_use_subtitle": "این برنامه کاملاً رایگان است. بدون هزینه پنهان، بدون اشتراک، بدون تبلیغات."
     },
@@ -381,7 +381,7 @@
     "select_language_title": "انتخاب زبان",
     "select_language_subtitle": "زبان مورد نظر خود را برای رابط برنامه انتخاب کنید",
     "internet_for_all": "اینترنت برای همه؛ یا برای هیچ کس!",
-    "channels_and_sponsors_title": "کانال‌ها و حامیان ProxyCloud",
+    "channels_and_sponsors_title": "کانال‌ها و حامیان NEXG VPN",
     "telegram_proxy": {
         "title": "پروکسی‌های تلگرام",
         "refresh": "تازه‌سازی",
@@ -549,3 +549,4 @@
         "channel": "IRCF"
     }
 }
+

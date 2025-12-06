@@ -54,7 +54,7 @@ class AboutScreen extends StatelessWidget {
 
             // App Name
             const Text(
-              'Proxy Cloud',
+              'NEXG VPN',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
 

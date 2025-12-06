@@ -40,6 +40,7 @@ dependencies:
   flutter_v2ray_client:
     path: local_packages/flutter_v2ray_client
   http: ^1.2.0
+  dio: ^5.4.3+1
   provider: ^6.1.1
   shared_preferences: ^2.2.2
   flutter_svg: ^2.0.9

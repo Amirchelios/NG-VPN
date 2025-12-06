@@ -6,7 +6,7 @@
     "direction": "ltr"
   },
   "app": {
-    "title": "ProxyCloud",
+    "title": "NEXG VPN",
     "subtitle": "免费VPN客户端"
   },
   "navigation": {
@@ -56,7 +56,7 @@
     "select_language": "选择语言"
   },
   "home": {
-    "title": "Proxy Cloud",
+    "title": "NEXG VPN",
     "connect": "连接",
     "disconnect": "断开连接",
     "connecting": "连接中...",
@@ -158,12 +158,12 @@
     "tagline": "开源、免费、快速和私密的VPN",
     "developed_by": "开发者",
     "developers": "Hossein Pira",
-    "description": "ProxyCloud是一个开源VPN应用程序，通过V2Ray VPN技术和Telegram MTProto代理提供安全、私密的互联网访问。快速、无限制且完全免费，无需订阅费用。您的隐私是我们的优先考虑。",
+    "description": "NEXG VPN是一个开源VPN应用程序，通过V2Ray VPN技术和Telegram MTProto代理提供安全、私密的互联网访问。快速、无限制且完全免费，无需订阅费用。您的隐私是我们的优先考虑。",
     "telegram_channel": "Telegram频道",
     "github_source": "GitHub源代码",
     "privacy_policy": "隐私政策",
     "terms_of_service": "服务条款",
-    "copyright": "© 2025 Proxy Cloud"
+    "copyright": "© 2025 NEXG VPN"
   },
   "backup_restore": {
     "title": "备份和恢复",
@@ -182,9 +182,9 @@
   "battery_settings": {
     "title": "电池和后台访问",
     "header_title": "后台访问管理",
-    "header_description": "管理电池优化和后台访问设置，确保ProxyCloud正常工作。",
+    "header_description": "管理电池优化和后台访问设置，确保NEXG VPN正常工作。",
     "battery_optimization": "电池优化",
-    "battery_optimization_desc": "为ProxyCloud禁用电池优化，防止系统限制后台活动。",
+    "battery_optimization_desc": "为NEXG VPN禁用电池优化，防止系统限制后台活动。",
     "open_battery_optimization": "打开电池优化",
     "general_battery": "通用电池设置",
     "general_battery_desc": "访问通用电池和电源管理设置。",
@@ -359,7 +359,7 @@
     "error_opening_app_settings": "打开应用程序设置时出错",
     "skip": "跳过",
     "get_started": "开始使用",
-    "welcome_title": "欢迎使用Proxy Cloud",
+    "welcome_title": "欢迎使用NEXG VPN",
     "welcome_subtitle": "一个开源VPN，快速、无限制、安全且完全免费。",
     "privacy_title": "您的隐私很重要",
     "privacy_subtitle": "我们不跟踪、存储或分享您的数据。您的在线活动保持私密和安全。",
@@ -373,7 +373,7 @@
     "background_access_subtitle": "允许应用程序在后台运行，以获得更好的VPN性能和连接稳定性。",
     "open_settings": "打开设置",
     "battery_settings": "电池设置",
-    "battery_optimization_note": "为ProxyCloud禁用电池优化，确保应用程序在后台时VPN保持连接。",
+    "battery_optimization_note": "为NEXG VPN禁用电池优化，确保应用程序在后台时VPN保持连接。",
     "free_to_use_title": "完全免费",
     "free_to_use_subtitle": "此应用程序完全免费使用。无隐藏费用、无订阅、无广告。"
   },
@@ -381,7 +381,7 @@
   "select_language_title": "选择语言",
   "select_language_subtitle": "为应用程序界面选择您喜欢的语言",
   "internet_for_all": "互联网属于所有人；或者不属于任何人！",
-  "channels_and_sponsors_title": "ProxyCloud 频道和赞助商",
+  "channels_and_sponsors_title": "NEXG VPN 频道和赞助商",
   "telegram_proxy": {
     "title": "Telegram代理",
     "refresh": "刷新",
@@ -549,3 +549,4 @@
     "channel": "IRCF"
   }
 }
+
