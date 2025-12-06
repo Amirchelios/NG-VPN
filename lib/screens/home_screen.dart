@@ -394,6 +394,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isInitializing = context.select<V2RayProvider, bool>(
+      (provider) => provider.isInitializing,
+    );
+    final hasActiveConfig = context.select<V2RayProvider, bool>(
+      (provider) => provider.activeConfig != null,
+    );
+    final v2rayProvider = context.read<V2RayProvider>();
+
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
         return Directionality(
@@ -476,11 +484,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   // Main content
                   Expanded(
-                    child: Consumer<V2RayProvider>(
-                      builder: (context, provider, _) {
-                        // Show loading indicator while initializing
-                        if (provider.isInitializing) {
-                          return Center(
+                    child: isInitializing
+                        ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -499,35 +504,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                             ),
-                          );
-                        }
+                          )
+                        : SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // Server selector (now includes Proxy Mode Switch)
+                                  const ServerSelector(),
 
-                        return SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Server selector (now includes Proxy Mode Switch)
-                                const ServerSelector(),
+                                  const SizedBox(height: 20),
 
-                                const SizedBox(height: 20),
+                                  // Connection button
+                                  const ConnectionButton(),
 
-                                // Connection button
-                                const ConnectionButton(),
+                                  const SizedBox(height: 40),
 
-                                const SizedBox(height: 40),
-
-                                // Connection stats
-                                if (provider.activeConfig != null)
-                                  _buildConnectionStats(provider),
-                              ],
+                                  // Connection stats
+                                  if (hasActiveConfig)
+                                    _buildConnectionStats(v2rayProvider),
+                                ],
+                              ),
                             ),
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -560,10 +561,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final ipInfo = v2rayService.ipInfo;
 
-        return Consumer<WallpaperService>(
-          builder: (context, wallpaperService, _) {
-            final isGlassBackground = wallpaperService.isGlassBackgroundEnabled;
-
+        return Selector<WallpaperService, bool>(
+          selector: (_, service) => service.isGlassBackgroundEnabled,
+          builder: (context, isGlassBackground, __) {
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               padding: const EdgeInsets.all(16),
