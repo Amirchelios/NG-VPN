@@ -470,18 +470,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     tooltip: context.tr(TranslationKeys.homeSubscriptions),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.info_outline),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AboutScreen(),
-                        ),
-                      );
-                    },
-                    tooltip: context.tr(TranslationKeys.homeAbout),
-                  ),
                 ],
               ),
               body: Column(

@@ -259,8 +259,8 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
 
   final Map<String, bool> _cancelPingTasks = {};
   Timer? _batchTimeoutTimer;
-  bool _sortByPing = false; // New variable for ping sorting
-  bool _sortAscending = true; // New variable for sort direction
+  bool _sortByPing = true; // Enable ping sorting by default
+  bool _sortAscending = true; // Sort from best (lowest) ping first
   bool _isPingingAllServers = false; // Variable for ping all loading state
 
   @override
