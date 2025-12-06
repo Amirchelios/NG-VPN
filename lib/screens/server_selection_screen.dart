@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Constants for shared preferences keys
 const String _pingBatchSizeKey = 'ping_batch_size';
+const Duration _pingCacheDuration = Duration(minutes: 10);
 
 class ServerSelectionScreen extends StatefulWidget {
   final List<V2RayConfig> configs;
@@ -36,6 +37,7 @@ class ServerSelectionScreen extends StatefulWidget {
 class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
   String _selectedFilter = 'All';
   final Map<String, int?> _pings = {};
+  final Map<String, DateTime> _pingTimestamps = {};
   final Map<String, bool> _loadingPings = {};
   final V2RayService _v2rayService = V2RayService();
   final StreamController<String> _autoConnectStatusStream =
@@ -69,9 +71,11 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
       // Save ping results with timestamp
       for (final entry in _pings.entries) {
         if (entry.value != null) {
+          final timestamp =
+              _pingTimestamps[entry.key] ?? DateTime.now();
           pingData[entry.key] = {
             'ping': entry.value,
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'timestamp': timestamp.millisecondsSinceEpoch,
           };
         }
       }
@@ -94,19 +98,23 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
       if (jsonString != null && jsonString.isNotEmpty) {
         final Map<String, dynamic> pingData = jsonDecode(jsonString);
         final now = DateTime.now().millisecondsSinceEpoch;
-        final oneHourInMillis = 60 * 60 * 1000; // 1 hour
 
         // Clear current pings
-        _pings.clear();
+        _clearPingCache();
 
         // Load valid ping results (less than 1 hour old)
         for (final entry in pingData.entries) {
           final pingInfo = entry.value as Map<String, dynamic>;
           final timestamp = pingInfo['timestamp'] as int;
 
-          // Only load pings that are less than 1 hour old
-          if (now - timestamp < oneHourInMillis) {
-            _pings[entry.key] = pingInfo['ping'] as int?;
+          // Only load pings that are still inside cache duration
+          if (now - timestamp < _pingCacheDuration.inMilliseconds) {
+            final cachedPing = pingInfo['ping'] as int?;
+            _cachePing(
+              entry.key,
+              cachedPing,
+              timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+            );
           }
         }
 
@@ -125,10 +133,40 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('saved_pings');
+      _clearPingCache();
       debugPrint('Cleared saved pings from storage');
     } catch (e) {
       debugPrint('Error clearing saved pings: $e');
     }
+  }
+
+  void _cachePing(
+    String configId,
+    int? ping, {
+    DateTime? timestamp,
+  }) {
+    _pings[configId] = ping;
+    _pingTimestamps[configId] = timestamp ?? DateTime.now();
+  }
+
+  bool _isPingFresh(String configId) {
+    final timestamp = _pingTimestamps[configId];
+    if (timestamp == null) {
+      return false;
+    }
+    return DateTime.now().difference(timestamp) < _pingCacheDuration;
+  }
+
+  int? _getCachedPing(String configId) {
+    if (_isPingFresh(configId)) {
+      return _pings[configId];
+    }
+    return null;
+  }
+
+  void _clearPingCache() {
+    _pings.clear();
+    _pingTimestamps.clear();
   }
 
   Future<void> _importFromClipboard() async {
@@ -332,7 +370,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
       if (mounted && _cancelPingTasks[config.id] != true) {
         setState(() {
           for (var relatedConfig in relatedConfigs) {
-            _pings[relatedConfig.id] = ping;
+            _cachePing(relatedConfig.id, ping);
             _loadingPings[relatedConfig.id] = false;
           }
         });
@@ -348,7 +386,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
       if (mounted && _cancelPingTasks[config.id] != true) {
         setState(() {
           for (var relatedConfig in relatedConfigs) {
-            _pings[relatedConfig.id] = -1; // Set -1 for failed pings
+            _cachePing(relatedConfig.id, -1); // Set -1 for failed pings
             _loadingPings[relatedConfig.id] = false;
           }
         });
@@ -383,14 +421,15 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
   }
 
   // Method to ping all servers in the current filter tab in batches of 5
-  Future<void> _pingAllServersInBatches() async {
+  Future<void> _pingAllServersInBatches({bool force = false}) async {
     if (_isPingingAllServers) return;
 
     try {
       setState(() {
         _isPingingAllServers = true;
-        // Clear existing pings when starting new test
-        _pings.clear();
+        if (force) {
+          _clearPingCache();
+        }
         _loadingPings.clear();
       });
 
@@ -432,10 +471,21 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
         }
       }
 
-      // Remove already connected config from ping test
-      configsToPing = configsToPing
-          .where((config) => config.id != widget.selectedConfig?.id)
-          .toList();
+      final selectedId = widget.selectedConfig?.id;
+      configsToPing = configsToPing.where((config) {
+        if (config.id == selectedId) {
+          return false;
+        }
+        if (!force && _isPingFresh(config.id)) {
+          return false;
+        }
+        return true;
+      }).toList();
+
+      if (configsToPing.isEmpty) {
+        debugPrint('Skipping ping test - cached results still fresh.');
+        return;
+      }
 
       // Process configs in larger batches for faster testing
       for (int i = 0; i < configsToPing.length; i += batchSize) {
@@ -704,7 +754,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
     try {
       // Clear existing pings when starting new test
       setState(() {
-        _pings.clear();
+        _clearPingCache();
       });
 
       // Get the batch size from settings
@@ -798,7 +848,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
         onPressed: _isPingingAllServers
             ? null
             : () async {
-                await _pingAllServersInBatches();
+                await _pingAllServersInBatches(force: true);
               },
       ),
       // Sort button
@@ -881,8 +931,8 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
     // Sort configs by ping if enabled
     if (_sortByPing) {
       filteredConfigs.sort((a, b) {
-        final pingA = _pings[a.id];
-        final pingB = _pings[b.id];
+        final pingA = _getCachedPing(a.id);
+        final pingB = _getCachedPing(b.id);
 
         // Check if ping values are valid (not null, -1, or 0)
         final isValidPingA = pingA != null && pingA > 0;
@@ -937,7 +987,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
 
                   // Clear saved pings when updating subscriptions
                   await _clearSavedPings();
-                  _pings.clear();
+                  _clearPingCache();
                   if (mounted) {
                     setState(() {});
                   }
@@ -962,7 +1012,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
 
                   setState(() {});
                   // Ping all servers in current tab after refresh
-                  await _pingAllServersInBatches();
+                  await _pingAllServersInBatches(force: true);
 
                   if (provider.errorMessage.isNotEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1238,6 +1288,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
                       final config = filteredConfigs[index - 1];
                       final isSelected =
                           provider.selectedConfig?.id == config.id;
+                      final cachedPing = _getCachedPing(config.id);
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -1378,10 +1429,10 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
                                                         ),
                                                   ),
                                                 )
-                                              : _pings[config.id] != null &&
-                                                    _pings[config.id]! > 0
+                                              : cachedPing != null &&
+                                                    cachedPing > 0
                                               ? Text(
-                                                  '${_pings[config.id]}ms',
+                                                  '${cachedPing}ms',
                                                   style: TextStyle(
                                                     color:
                                                         AppTheme.primaryGreen,
@@ -1389,7 +1440,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                                 )
-                                              : _pings[config.id] == -1
+                                              : cachedPing == -1
                                               ? const Text(
                                                   '-1',
                                                   style: TextStyle(
