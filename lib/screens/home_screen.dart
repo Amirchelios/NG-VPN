@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import '../providers/v2ray_provider.dart';
+import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
 import '../utils/app_localizations.dart';
 import '../widgets/connection_button.dart';
@@ -14,6 +15,7 @@ import '../services/v2ray_service.dart';
 import '../services/wallpaper_service.dart';
 import '../utils/auto_select_util.dart';
 import 'subscription_management_screen.dart';
+import 'profile_activation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -394,6 +396,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final profileProvider = context.watch<ProfileProvider>();
+    final hasProfile = profileProvider.hasValidProfile;
     final isInitializing = context.select<V2RayProvider, bool>(
       (provider) => provider.isInitializing,
     );
@@ -480,63 +484,72 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              body: Column(
-                children: [
-                  // Main content
-                  Expanded(
-                    child: isInitializing
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    AppTheme.primaryBlue,
+              body: !hasProfile
+                  ? _buildProfileRequiredView(context)
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: isInitializing
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const CircularProgressIndicator(
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          AppTheme.primaryBlue,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        context.tr('common.loading'),
+                                        style: const TextStyle(
+                                          color: AppTheme.textGrey,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : SingleChildScrollView(
+                                  physics: const BouncingScrollPhysics(),
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 20),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Consumer<V2RayProvider>(
+                                          builder: (context, provider, _) =>
+                                              _buildProfileCard(
+                                            context,
+                                            provider,
+                                            profileProvider,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        FractionallySizedBox(
+                                          widthFactor: 0.94,
+                                          child: hasActiveConfig
+                                              ? _buildConnectionStats(
+                                                  v2rayProvider,
+                                                )
+                                              : const ServerSelector(),
+                                        ),
+                                        const SizedBox(height: 24),
+                                        FractionallySizedBox(
+                                          widthFactor: 0.85,
+                                          child: const ConnectionButton(),
+                                        ),
+                                        const SizedBox(height: 32),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  context.tr('common.loading'),
-                                  style: const TextStyle(
-                                    color: AppTheme.textGrey,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Consumer<V2RayProvider>(
-                                  builder: (context, provider, _) =>
-                                      _buildProfileCard(context, provider),
-                                ),
-                                const SizedBox(height: 16),
-                                FractionallySizedBox(
-                                  widthFactor: 0.94,
-                                  child: hasActiveConfig
-                                      ? _buildConnectionStats(v2rayProvider)
-                                      : const ServerSelector(),
-                                ),
-                                const SizedBox(height: 24),
-                                FractionallySizedBox(
-                                  widthFactor: 0.85,
-                                  child: const ConnectionButton(),
-                                ),
-                                const SizedBox(height: 32),
-                              ],
-                            ),
-                          ),
                         ),
-                  ),
-                ],
-              ),
+                      ],
+                    ),
             ),
           ),
         );
@@ -544,17 +557,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileCard(BuildContext context, V2RayProvider provider) {
-    final activeConfig = provider.activeConfig;
-    final selectedConfig = provider.selectedConfig;
-    final displayConfig = activeConfig ?? selectedConfig;
-    final serverName = displayConfig?.remark ??
-        context.tr(TranslationKeys.homeNoServerSelected);
-    final statusText = activeConfig != null
-        ? context.tr(TranslationKeys.homeConnected)
-        : context.tr(TranslationKeys.homeDisconnected);
-    final statusColor =
-        activeConfig != null ? AppTheme.primaryGreen : Colors.orangeAccent;
+  Widget _buildProfileCard(
+    BuildContext context,
+    V2RayProvider provider,
+    ProfileProvider profileProvider,
+  ) {
+    final profile = profileProvider.profile;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -588,30 +596,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      serverName,
+                      profile?.name ?? 'نام ثبت نشده',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${context.tr(TranslationKeys.homeProfileStatus)}: $statusText',
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 13,
+                      'شماره: ${profile?.phone ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textGrey,
                       ),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                onPressed: () => _shareV2RayLink(context),
-                icon: const Icon(Icons.share_outlined),
-                color: AppTheme.primaryBlue,
-                tooltip: context.tr(TranslationKeys.commonShare),
-              ),
+              if (profile != null)
+                Text(
+                  profile.expiryJalali,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -621,16 +630,50 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildProfileInfoChip(
                 icon: Icons.cloud_outlined,
-                label: context.tr(TranslationKeys.homeActiveServer),
-                value: serverName,
+                label: 'کد فعال‌سازی',
+                value: profile?.code ?? '---',
               ),
               _buildProfileInfoChip(
                 icon: Icons.layers_outlined,
-                label: context.tr(TranslationKeys.homeSubscriptions),
-                value: provider.subscriptions.length.toString(),
+                label: 'وضعیت',
+                value: profileProvider.hasValidProfile ? 'فعال' : 'غیرفعال',
               ),
             ],
           ),
+          if (profile != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'روزهای باقی‌مانده',
+                  style: TextStyle(
+                    color: AppTheme.textGrey,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  '${profile.remainingDays} روز',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: profile.remainingProgress.clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor: Colors.white.withOpacity(0.1),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryBlue,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -903,6 +946,51 @@ class _HomeScreenState extends State<HomeScreen> {
               style: const TextStyle(
                 fontSize: 11,
                 color: AppTheme.primaryGreen,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileRequiredView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.lock_outline, size: 80, color: Colors.white70),
+            const SizedBox(height: 16),
+            const Text(
+              'برای استفاده از برنامه لازم است پروفایل اختصاصی خود را فعال کنید.',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileActivationScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'فعال‌سازی پروفایل',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

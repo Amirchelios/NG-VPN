@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
-import 'main_navigation_screen.dart';
+import 'profile_activation_screen.dart';
 import '../utils/app_localizations.dart';
 import '../models/app_language.dart';
 import '../providers/language_provider.dart';
@@ -98,7 +98,9 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
+          MaterialPageRoute(
+            builder: (context) => const ProfileActivationScreen(),
+          ),
         );
       }
     } else {
@@ -141,7 +143,7 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
                     Navigator.of(context).pop(); // Close the dialog
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
-                        builder: (context) => const MainNavigationScreen(),
+                        builder: (context) => const ProfileActivationScreen(),
                       ),
                     );
                   }

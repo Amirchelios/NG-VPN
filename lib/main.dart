@@ -8,9 +8,11 @@ import 'providers/language_provider.dart';
 import 'services/wallpaper_service.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/privacy_welcome_screen.dart';
+import 'screens/profile_activation_screen.dart';
 import 'services/update_service.dart';
 import 'theme/app_theme.dart';
 import 'dart:async';
+import 'providers/profile_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,6 +95,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: widget.languageProvider),
         ChangeNotifierProvider(create: (context) => V2RayProvider()),
         ChangeNotifierProvider(create: (context) => TelegramProxyProvider()),
+        ChangeNotifierProvider(create: (context) => ProfileProvider()),
         ChangeNotifierProvider(
           create: (context) {
             _wallpaperService = WallpaperService()..initialize();
@@ -100,8 +103,23 @@ class _MyAppState extends State<MyApp> {
           },
         ),
       ],
-      child: Consumer<LanguageProvider>(
-        builder: (context, languageProvider, child) {
+      child: Consumer2<LanguageProvider, ProfileProvider>(
+        builder: (context, languageProvider, profileProvider, child) {
+          Widget home;
+          if (!widget.privacyAccepted) {
+            home = const PrivacyWelcomeScreen();
+          } else if (profileProvider.isLoading) {
+            home = const Scaffold(
+              backgroundColor: AppTheme.primaryDark,
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (!profileProvider.hasValidProfile) {
+            home = const ProfileActivationScreen();
+          } else {
+            home = const MainNavigationScreen();
+          }
           return MaterialApp(
             title: 'NEXG VPN',
             debugShowCheckedModeBanner: false,
@@ -122,9 +140,7 @@ class _MyAppState extends State<MyApp> {
               Locale('ru'), // Russian
               Locale('fa'), // Persian
             ],
-            home: widget.privacyAccepted
-                ? const MainNavigationScreen()
-                : const PrivacyWelcomeScreen(),
+            home: home,
           );
         },
       ),

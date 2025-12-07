@@ -53,6 +53,7 @@ dependencies:
   flutter_animate: ^4.5.0
   cached_network_image: ^3.3.1
   flutter_cache_manager: ^3.3.1
+  shamsi_date: ^1.1.0
   intl: ^0.20.2
   webview_flutter: ^4.13.0
   file_picker: ^10.3.2
