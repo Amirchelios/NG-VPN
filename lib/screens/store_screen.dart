@@ -57,6 +57,7 @@ class _StoreScreenState extends State<StoreScreen> {
           _filteredItems = data;
           _isLoading = false;
         });
+        Future.microtask(_ensureBasicSubscriptions);
       } else {
         setState(() {
           _errorMessage = context.tr(
@@ -143,6 +144,24 @@ class _StoreScreenState extends State<StoreScreen> {
         context,
         context.tr(TranslationKeys.errorUnknown) + ': ${e.toString()}',
       );
+    }
+  }
+
+  Future<void> _ensureBasicSubscriptions() async {
+    final provider = Provider.of<V2RayProvider>(context, listen: false);
+    for (final item in _storeItems) {
+      final name = item['name']?.toString().trim();
+      final url = item['url']?.toString().trim();
+      if (name == null || name.isEmpty || url == null || url.isEmpty) {
+        continue;
+      }
+      final alreadyExists =
+          provider.subscriptions.any((subscription) => subscription.name == name);
+      if (alreadyExists) continue;
+      await provider.addSubscription(name, url);
+      if (provider.errorMessage.isNotEmpty) {
+        provider.clearError();
+      }
     }
   }
 

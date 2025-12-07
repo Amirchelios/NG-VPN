@@ -8,14 +8,10 @@ import '../utils/app_localizations.dart';
 import '../providers/language_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ip_info_screen.dart';
-import 'host_checker_screen.dart';
-import 'speedtest_screen.dart';
 import 'subscription_management_screen.dart';
 import 'vpn_settings_screen.dart';
-import 'blocked_apps_screen.dart';
 import 'per_app_tunnel_screen.dart';
 import 'backup_restore_screen.dart';
-import 'wallpaper_settings_screen.dart';
 import 'wallpaper_store_screen.dart';
 import 'battery_settings_screen.dart';
 import 'language_settings_screen.dart';
@@ -54,31 +50,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
         );
       }
     }
-  }
-
-  void _showExitConfirmation() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(context.tr('common.exit')),
-          content: Text(context.tr('common.exit_confirm')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(context.tr('common.exit_cancel')),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                SystemNavigator.pop();
-              },
-              child: Text(context.tr('common.exit_yes')),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -143,48 +114,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                     );
                   },
                 ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsHostChecker),
-                  description: context.tr('tools.host_checker_desc'),
-                  icon: Icons.link,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HostCheckerScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsSpeedTest),
-                  description: context.tr('tools.speed_test_desc'),
-                  icon: Icons.speed,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SpeedtestScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsBlockedApps),
-                  description: context.tr('tools.blocked_apps_desc'),
-                  icon: Icons.block,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const BlockedAppsScreen(),
-                      ),
-                    );
-                  },
-                ),
+                // Removed temporary cards: host checker, speed test, blocked apps
                 _buildToolCard(
                   context,
                   title: context.tr(TranslationKeys.toolsPerAppTunnel),
@@ -195,20 +125,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const PerAppTunnelScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsHomeWallpaper),
-                  description: context.tr('tools.home_wallpaper_desc'),
-                  icon: Icons.wallpaper,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WallpaperSettingsScreen(),
                       ),
                     );
                   },
@@ -268,14 +184,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       ),
                     );
                   },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr('common.exit'),
-                  description: context.tr('common.exit_app'),
-                  icon: Icons.exit_to_app,
-                  onTap: _showExitConfirmation,
-                  isExitButton: true,
                 ),
                 // Add more tools here in the future
               ],

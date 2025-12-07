@@ -21,8 +21,7 @@ class PrivacyWelcomeScreen extends StatefulWidget {
 class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final int _totalPages =
-      7; // Reduced to remove background access page, now accommodating channels, sponsors, and Persian Gulf pages
+  final int _totalPages = 2;
   bool _acceptedPrivacy = false;
 
   AppLanguage? _selectedLanguage;
@@ -61,8 +60,7 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
     }
 
     // If on privacy page and checkbox not checked, don't proceed
-    if (_currentPage == 2 && !_acceptedPrivacy) {
-      // Changed from 1 to 2 because we added language page
+    if (_currentPage == 1 && !_acceptedPrivacy) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -72,11 +70,6 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
         ),
       );
       return;
-    }
-
-    // If on channels page, proceed to next page
-    if (_currentPage == 4) {
-      // No special handling required for channels page
     }
 
     if (_currentPage < _totalPages - 1) {
@@ -211,13 +204,8 @@ class _PrivacyWelcomeScreenState extends State<PrivacyWelcomeScreen> {
                         });
                       },
                       children: [
-                        _buildLanguageSelectionPage(), // Added language selection page
-                        _buildWelcomePage(),
+                        _buildLanguageSelectionPage(),
                         _buildPrivacyPage(),
-                        _buildNoLimitsPage(),
-                        _buildChannelsPage(), // Added channels and sponsors page
-                        _buildPersianGulfPage(), // Added Persian Gulf page
-                        _buildFreeToUsePage(),
                       ],
                     ),
                   ),
