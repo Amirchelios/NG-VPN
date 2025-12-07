@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_v2ray_client/flutter_v2ray.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +23,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   bool _isLoadingServers = false;
   bool _isProxyMode = false;
   bool _isInitializing = true;
+  Timer? _connectionHealthTimer;
+  int _connectionHealthFailures = 0;
+  String? _healthMonitorConfigId;
 
   // Method channel for VPN control
   static const platform = MethodChannel('com.cloud.pira/vpn_control');
@@ -63,6 +67,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   Future<void> _handleNotificationDisconnect() async {
     // Actually disconnect the VPN service
     await _v2rayService.disconnect();
+    _stopConnectionHealthMonitor();
 
     // Update config status when disconnected from notification
     for (int i = 0; i < _configs.length; i++) {
@@ -763,6 +768,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> connectToServer(V2RayConfig config, bool _isProxyMode) async {
+    _stopConnectionHealthMonitor();
     _isConnecting = true;
     _errorMessage = '';
     notifyListeners();
@@ -920,6 +926,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
           }
 
           debugPrint('Successfully connected to ${config.remark}');
+          _startConnectionHealthMonitor(config);
         } catch (e) {
           debugPrint('Error in post-connection setup: $e');
           // Connection succeeded but post-setup failed
@@ -929,10 +936,16 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
         _setError(
           'Failed to connect to ${config.remark} after $attemptCount attempts: $lastError',
         );
+        Future.microtask(
+          () => _handleFailedServer(config, lastError),
+        );
       }
     } catch (e) {
       debugPrint('Unexpected error in connection process: $e');
       _setError('Unexpected error connecting to ${config.remark}: $e');
+      Future.microtask(
+        () => _handleFailedServer(config, e.toString()),
+      );
     } finally {
       _isConnecting = false;
       notifyListeners();
@@ -944,6 +957,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     notifyListeners();
 
     try {
+      _stopConnectionHealthMonitor();
       await _v2rayService.disconnect();
       statusPingOnly = false;
       // Update config status
@@ -1031,6 +1045,56 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 
     await connectToServer(result.selectedConfig!, _isProxyMode);
     return true;
+  }
+
+  Future<void> _handleFailedServer(
+    V2RayConfig config,
+    String reason,
+  ) async {
+    debugPrint('Handling failed server ${config.remark}: $reason');
+    if (_healthMonitorConfigId == config.id) {
+      _stopConnectionHealthMonitor();
+    }
+    await _removeFaultyConfig(config);
+    await _connectToBestAvailableServer(excludeIds: {config.id});
+  }
+
+  void _startConnectionHealthMonitor(V2RayConfig config) {
+    _stopConnectionHealthMonitor();
+    _healthMonitorConfigId = config.id;
+    _connectionHealthFailures = 0;
+    _connectionHealthTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (timer) async {
+        if (_v2rayService.activeConfig?.id != _healthMonitorConfigId) {
+          _stopConnectionHealthMonitor();
+          return;
+        }
+        final healthy = await _verifyConnectionQuality();
+        if (!healthy) {
+          _connectionHealthFailures++;
+          if (_connectionHealthFailures >= 2) {
+            _stopConnectionHealthMonitor();
+            _setError(
+              'Connection dropped; switching to another server...',
+            );
+            await _handleFailedServer(
+              config,
+              'Health monitor detected repeated failures',
+            );
+          }
+        } else {
+          _connectionHealthFailures = 0;
+        }
+      },
+    );
+  }
+
+  void _stopConnectionHealthMonitor() {
+    _connectionHealthTimer?.cancel();
+    _connectionHealthTimer = null;
+    _healthMonitorConfigId = null;
+    _connectionHealthFailures = 0;
   }
 
   void clearError() {
