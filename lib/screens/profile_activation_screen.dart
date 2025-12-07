@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
 import '../services/profile_manager.dart';
-import '../models/user_profile.dart';
 import '../theme/app_theme.dart';
+import '../widgets/error_snackbar.dart';
 import 'main_navigation_screen.dart';
+import 'qr_scanner_screen.dart';
 
 class ProfileActivationScreen extends StatefulWidget {
   const ProfileActivationScreen({super.key});
@@ -42,7 +46,8 @@ class _ProfileActivationScreenState extends State<ProfileActivationScreen> {
           await ProfileManager.fetchProfileByCode(code);
       if (profile == null) {
         setState(() {
-          _error = 'کد وارد شده یافت نشد. لطفاً با پشتیبانی تماس بگیرید.';
+          _error =
+              'کد وارد شده یافت نشد. لطفاً با پشتیبانی تماس بگیرید.';
         });
       } else if (profile.isExpired) {
         setState(() {
@@ -73,6 +78,18 @@ class _ProfileActivationScreenState extends State<ProfileActivationScreen> {
     }
   }
 
+  Future<void> _openSupport() async {
+    final uri = Uri.parse('https://t.me/nexg0');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ErrorSnackbar.show(
+          context,
+          'امکان باز کردن تلگرام وجود ندارد.',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -88,8 +105,8 @@ class _ProfileActivationScreenState extends State<ProfileActivationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'برای استفاده از برنامه لازم است پروفایل اختصاصی خود را وارد کنید. '
-              'کد ردیم را از پشتیبانی دریافت نمایید و در کادر زیر وارد کنید.',
+              'برای استفاده از برنامه لازم است پروفایل اختصاصی خود را فعال کنید. '
+              'کد ردیم را از پشتیبانی دریافت کنید و در کادر زیر وارد نمایید.',
               style: TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 24),
@@ -103,6 +120,47 @@ class _ProfileActivationScreenState extends State<ProfileActivationScreen> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.paste),
+                  tooltip: 'چسباندن از کلیپ‌بورد',
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          final data =
+                              await Clipboard.getData(Clipboard.kTextPlain);
+                          if (data?.text != null) {
+                            _codeController.text = data!.text!.trim();
+                            setState(() {
+                              _error = null;
+                            });
+                          }
+                        },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      final result = await Navigator.push<String>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const QrScannerScreen(),
+                        ),
+                      );
+                      if (result != null && result.isNotEmpty) {
+                        setState(() {
+                          _codeController.text = result.trim();
+                          _error = null;
+                        });
+                      }
+                    },
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('اسکن QR'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24),
               ),
             ),
             const SizedBox(height: 12),
@@ -135,6 +193,15 @@ class _ProfileActivationScreenState extends State<ProfileActivationScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _openSupport,
+              icon: const Icon(Icons.support_agent, color: Colors.white70),
+              label: const Text(
+                'ارتباط با پشتیبان (تلگرام)',
+                style: TextStyle(color: Colors.white70),
               ),
             ),
           ],
