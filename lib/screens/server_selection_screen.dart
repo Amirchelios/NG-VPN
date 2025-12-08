@@ -23,12 +23,12 @@ class ServerSelectionScreen extends StatefulWidget {
   final Future<void> Function(V2RayConfig) onConfigSelected;
 
   const ServerSelectionScreen({
-    Key? key,
+    super.key,
     required this.configs,
     required this.selectedConfig,
     required this.isConnecting,
     required this.onConfigSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<ServerSelectionScreen> createState() => _ServerSelectionScreenState();
@@ -920,7 +920,7 @@ class _ServerSelectionScreenState extends State<ServerSelectionScreen> {
       filteredConfigs = configs
           .where((config) => subscription.configIds.contains(config.id))
           .toList();
-      debugPrint('Subscription tab "${_selectedFilter}": showing ${filteredConfigs.length} configs');
+      debugPrint('Subscription tab "$_selectedFilter": showing ${filteredConfigs.length} configs');
     }
 
     // Store original order when not sorting

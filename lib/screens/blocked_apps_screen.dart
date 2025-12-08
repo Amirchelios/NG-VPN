@@ -7,7 +7,6 @@ import '../utils/app_localizations.dart';
 import '../providers/language_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 
 class BlockedAppsScreen extends StatefulWidget {
   const BlockedAppsScreen({super.key});

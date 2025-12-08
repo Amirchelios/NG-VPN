@@ -8,7 +8,7 @@ import '../utils/app_localizations.dart';
 class ServerListItem extends StatefulWidget {
   final V2RayConfig config;
 
-  const ServerListItem({Key? key, required this.config}) : super(key: key);
+  const ServerListItem({super.key, required this.config});
 
   @override
   State<ServerListItem> createState() => _ServerListItemState();

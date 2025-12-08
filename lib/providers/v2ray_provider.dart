@@ -11,6 +11,177 @@ import '../services/server_service.dart';
 import '../utils/auto_select_util.dart';
 
 class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
+  static const String smartModeConfigId = 'smart-mode-config';
+  static const String _smartModeRemark = 'روش هوشمند';
+  static const String _smartModeConfigJson = '''
+{
+  "remarks": "ServLess frag tlshello",
+  "log": {
+    "access": "",
+    "error": "",
+    "loglevel": "none",
+    "dnsLog": false
+  },
+  "dns": {
+    "tag": "dns",
+    "hosts": {
+      "cloudflare-dns.com": [
+        "172.67.73.38",
+        "104.19.155.92",
+        "172.67.73.163",
+        "104.18.155.42",
+        "104.16.124.175",
+        "104.16.248.249",
+        "104.16.249.249",
+        "104.26.13.8"
+      ],
+      "domain:youtube.com": ["google.com"]
+    },
+    "servers": ["https://cloudflare-dns.com/dns-query"]
+  },
+  "inbounds": [
+    {
+      "domainOverride": ["http", "tls"],
+      "protocol": "socks",
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "userLevel": 8
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      }
+    },
+    {
+      "protocol": "http",
+      "tag": "http-in",
+      "listen": "127.0.0.1",
+      "port": 10809,
+      "settings": {
+        "userLevel": 8
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "fragment-out",
+      "domainStrategy": "UseIP",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "settings": {
+        "fragment": {
+          "packets": "tlshello",
+          "length": "10-20",
+          "interval": "10-20"
+        }
+      },
+      "streamSettings": {
+        "sockopt": {
+          "tcpNoDelay": true,
+          "tcpKeepAliveIdle": 100,
+          "mark": 255,
+          "domainStrategy": "UseIP"
+        }
+      }
+    },
+    {
+      "protocol": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "protocol": "vless",
+      "tag": "fakeproxy-out",
+      "domainStrategy": "",
+      "settings": {
+        "vnext": [
+          {
+            "address": "google.com",
+            "port": 443,
+            "users": [
+              {
+                "encryption": "none",
+                "flow": "",
+                "id": "UUID",
+                "level": 8,
+                "security": "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "allowInsecure": false,
+          "alpn": ["h2", "http/1.1"],
+          "fingerprint": "randomized",
+          "publicKey": "",
+          "serverName": "google.com",
+          "shortId": "",
+          "show": false,
+          "spiderX": ""
+        },
+        "wsSettings": {
+          "headers": {
+            "Host": "google.com"
+          },
+          "path": "/"
+        }
+      },
+      "mux": {
+        "concurrency": 8,
+        "enabled": false
+      }
+    }
+  ],
+  "policy": {
+    "levels": {
+      "8": {
+        "connIdle": 300,
+        "downlinkOnly": 1,
+        "handshake": 4,
+        "uplinkOnly": 1
+      }
+    },
+    "system": {
+      "statsOutboundUplink": true,
+      "statsOutboundDownlink": true
+    }
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "inboundTag": ["socks-in", "http-in"],
+        "type": "field",
+        "port": "53",
+        "outboundTag": "dns-out",
+        "enabled": true
+      },
+      {
+        "inboundTag": ["socks-in", "http-in"],
+        "type": "field",
+        "port": "0-65535",
+        "outboundTag": "fragment-out",
+        "enabled": true
+      }
+    ],
+    "strategy": "rules"
+  },
+  "stats": {}
+}''';
   final V2RayService _v2rayService = V2RayService();
   final ServerService _serverService = ServerService();
   bool statusPingOnly = false;
@@ -946,6 +1117,59 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       Future.microtask(
         () => _handleFailedServer(config, e.toString()),
       );
+    } finally {
+      _isConnecting = false;
+      notifyListeners();
+    }
+  }
+
+  V2RayConfig _buildSmartModeConfig() {
+    return V2RayConfig(
+      id: smartModeConfigId,
+      remark: _smartModeRemark,
+      address: 'google.com',
+      port: 443,
+      configType: 'vless',
+      fullConfig: _smartModeConfigJson,
+      isConnected: false,
+      isProxyMode: false,
+    );
+  }
+
+  Future<void> connectSmartMode() async {
+    _stopConnectionHealthMonitor();
+    _isConnecting = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    final smartConfig = _buildSmartModeConfig();
+
+    try {
+      // Ensure clean state before starting smart connection
+      if (_v2rayService.activeConfig != null) {
+        await _v2rayService.disconnect();
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      await _v2rayService.resetUsageStats();
+
+      final success = await _v2rayService.connectWithRawConfig(
+        config: smartConfig,
+        proxyOnly: false,
+      );
+
+      if (success) {
+        // Mark other configs as disconnected
+        for (int i = 0; i < _configs.length; i++) {
+          _configs[i].isConnected = false;
+        }
+        smartConfig.isConnected = true;
+        _selectedConfig = smartConfig;
+        _startConnectionHealthMonitor(smartConfig);
+      } else {
+        _setError('Failed to start smart mode connection');
+      }
+    } catch (e) {
+      _setError('Smart mode error: $e');
     } finally {
       _isConnecting = false;
       notifyListeners();

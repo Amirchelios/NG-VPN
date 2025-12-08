@@ -8,7 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/app_localizations.dart';
 
 class IpInfoScreen extends StatefulWidget {
-  const IpInfoScreen({Key? key}) : super(key: key);
+  const IpInfoScreen({super.key});
 
   @override
   State<IpInfoScreen> createState() => _IpInfoScreenState();

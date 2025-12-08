@@ -5,7 +5,6 @@ import '../services/v2ray_service.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/app_localizations.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 
 class PerAppTunnelScreen extends StatefulWidget {
   const PerAppTunnelScreen({super.key});

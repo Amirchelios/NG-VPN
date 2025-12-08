@@ -4,7 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
 
 class SpeedtestScreen extends StatefulWidget {
-  const SpeedtestScreen({Key? key}) : super(key: key);
+  const SpeedtestScreen({super.key});
 
   @override
   State<SpeedtestScreen> createState() => _SpeedtestScreenState();

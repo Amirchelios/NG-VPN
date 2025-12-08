@@ -8,13 +8,22 @@ import '../utils/auto_select_util.dart';
 import '../utils/app_localizations.dart';
 
 class ConnectionButton extends StatefulWidget {
-  const ConnectionButton({Key? key}) : super(key: key);
+  final VoidCallback? onFocused;
+  final bool bigMode;
+
+  const ConnectionButton({
+    Key? key,
+    this.onFocused,
+    this.bigMode = false,
+  }) : super(key: key);
 
   @override
   State<ConnectionButton> createState() => _ConnectionButtonState();
 }
 
 class _ConnectionButtonState extends State<ConnectionButton> {
+  bool _isConfiguring = false;
+
   // Cancellation token for auto-select operation
   AutoSelectCancellationToken? _autoSelectCancellationToken;
 
@@ -44,6 +53,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     BuildContext context,
     V2RayProvider provider,
   ) async {
+    setState(() => _isConfiguring = true);
+
     // Create cancellation token for this auto-select operation
     _autoSelectCancellationToken = AutoSelectCancellationToken();
 
@@ -100,6 +111,7 @@ class _ConnectionButtonState extends State<ConnectionButton> {
           _autoSelectStatusStream.add(message);
         },
         cancellationToken: _autoSelectCancellationToken,
+        fastMode: true,
       );
 
       // Check if operation was cancelled
@@ -151,6 +163,10 @@ class _ConnectionButtonState extends State<ConnectionButton> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isConfiguring = false);
+      }
     }
   }
 
@@ -187,9 +203,11 @@ class _ConnectionButtonState extends State<ConnectionButton> {
         final isConnecting = provider.isConnecting;
         final selectedConfig = provider.selectedConfig;
         final hasConfigs = provider.configs.isNotEmpty;
+        final isConfiguring = _isConfiguring && !isConnecting && !isConnected;
 
         return GestureDetector(
           onTap: () async {
+            widget.onFocused?.call();
             // Prevent multiple taps while connecting or initializing
             if (isConnecting || provider.isInitializing) {
               return;
@@ -238,104 +256,110 @@ class _ConnectionButtonState extends State<ConnectionButton> {
             }
           },
           child: Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: _getButtonColor(
-                    isConnected,
-                    isConnecting,
-                  ).withValues(alpha: 0.4),
-                  blurRadius: 25,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
+            width: widget.bigMode ? 190 : 180,
+            height: widget.bigMode ? 190 : 180,
+            decoration: const BoxDecoration(shape: BoxShape.circle),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // Pulsing background ring (only visible when connecting)
-                if (isConnecting)
-                  Container(
-                        width: 190,
-                        height: 190,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _getButtonColor(
-                              isConnected,
-                              isConnecting,
-                            ).withValues(alpha: 0.3),
-                            width: 4,
-                          ),
-                        ),
-                      )
-                      .animate(
-                        onPlay: (controller) =>
-                            controller.repeat(reverse: true),
-                      )
-                      .scaleXY(end: 1.2, duration: 1000.ms),
+                // Ambient blur halo
+                Container(
+                  width: widget.bigMode ? 210 : 200,
+                  height: widget.bigMode ? 210 : 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getButtonColor(
+                          isConnected,
+                          isConnecting,
+                          isConfiguring,
+                        ).withOpacity(0.20),
+                        blurRadius: 28,
+                        spreadRadius: 6,
+                      ),
+                    ],
+                  ),
+                ),
 
-                // Outer animated ring (only visible when connecting)
-                if (isConnecting)
-                  Container(
-                        width: 180,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _getButtonColor(isConnected, isConnecting),
-                            width: 3,
-                          ),
+                // Pulsing rings
+                if (isConnecting || isConfiguring)
+                  ...List.generate(2, (i) {
+                    final baseSize = widget.bigMode ? 155 : 145;
+                    final start = baseSize + i * 14;
+                    return Container(
+                      width: start.toDouble(),
+                      height: start.toDouble(),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _getButtonColor(
+                            isConnected,
+                            isConnecting,
+                            isConfiguring,
+                          ).withOpacity(0.35 - i * 0.1),
+                          width: 2.2 - i * 0.4,
                         ),
-                      )
-                      .animate(onPlay: (controller) => controller.repeat())
-                      .rotate(duration: 2000.ms, begin: 0, end: 1),
+                      ),
+                    )
+                        .animate(
+                          onPlay: (c) => c.repeat(reverse: true),
+                        )
+                        .scaleXY(
+                          begin: 0.96,
+                          end: 1.12 + i * 0.05,
+                          duration: (900 + i * 200).ms,
+                          curve: Curves.easeInOut,
+                        )
+                        .fadeIn(duration: 250.ms);
+                  }),
 
-                // Middle ring
-                if (isConnecting)
+                // Rotating sweep
+                if (isConnecting || isConfiguring)
                   Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _getButtonColor(
-                              isConnected,
-                              isConnecting,
-                            ).withValues(alpha: 0.7),
-                            width: 2,
-                          ),
-                        ),
-                      )
-                      .animate(
-                        onPlay: (controller) =>
-                            controller.repeat(reverse: true),
-                      )
-                      .scaleXY(end: 1.1, duration: 1500.ms),
+                    width: widget.bigMode ? 175 : 165,
+                    height: widget.bigMode ? 175 : 165,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: SweepGradient(
+                        colors: [
+                          _getButtonColor(
+                            isConnected,
+                            isConnecting,
+                            isConfiguring,
+                          ).withOpacity(0.25),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  )
+                      .animate(onPlay: (c) => c.repeat())
+                      .rotate(duration: 2.seconds),
 
                 // Main button with enhanced design
                 Container(
-                  width: 140,
-                  height: 140,
+                  width: widget.bigMode ? 150 : 140,
+                  height: widget.bigMode ? 150 : 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: _getGradientColors(isConnected, isConnecting),
+                      colors: _getGradientColors(
+                        isConnected,
+                        isConnecting,
+                        isConfiguring,
+                      ),
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: _getButtonColor(
                           isConnected,
                           isConnecting,
-                        ).withValues(alpha: 0.5),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
+                          isConfiguring,
+                        ).withOpacity(0.55),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -344,13 +368,13 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                     children: [
                       // Inner glow effect
                       Container(
-                        width: 130,
-                        height: 130,
+                        width: widget.bigMode ? 140 : 130,
+                        height: widget.bigMode ? 140 : 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: [
-                              Colors.white.withOpacity(0.2),
+                              Colors.white.withOpacity(0.25),
                               Colors.transparent,
                             ],
                           ),
@@ -362,7 +386,7 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _getButtonIcon(isConnected, isConnecting),
+                            _getButtonIcon(isConnected, isConnecting, isConfiguring),
                             color: Colors.white,
                             size: 50,
                           ),
@@ -372,6 +396,7 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                               isConnected,
                               isConnecting,
                               hasConfigs,
+                              isConfiguring,
                             ),
                             style: const TextStyle(
                               color: Colors.white,
@@ -383,8 +408,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                         ],
                       ),
 
-                      // Progress indicator when connecting
-                      if (isConnecting)
+                      // Progress indicator when connecting/configuring
+                      if (isConnecting || isConfiguring)
                         Positioned.fill(
                           child: CircularProgressIndicator(
                             valueColor: const AlwaysStoppedAnimation<Color>(
@@ -395,7 +420,12 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                         ),
                     ],
                   ),
-                ),
+                ).animate().scaleXY(
+                      begin: 0.97,
+                      end: 1.0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutBack,
+                    ),
               ],
             ),
           ),
@@ -404,37 +434,42 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     );
   }
 
-  Color _getButtonColor(bool isConnected, bool isConnecting) {
+  Color _getButtonColor(bool isConnected, bool isConnecting, bool isConfiguring) {
     if (isConnecting) return AppTheme.connectingBlue;
+    if (isConfiguring) return Colors.amber;
     return isConnected ? AppTheme.connectedGreen : AppTheme.disconnectedRed;
   }
 
-  List<Color> _getGradientColors(bool isConnected, bool isConnecting) {
+  List<Color> _getGradientColors(
+    bool isConnected,
+    bool isConnecting,
+    bool isConfiguring,
+  ) {
     if (isConnecting) {
-      return [
-        AppTheme.connectingBlue,
-        AppTheme.connectingBlue.withOpacity(0.7),
-      ];
-    } else if (isConnected) {
-      return [
-        AppTheme.connectedGreen,
-        AppTheme.connectedGreen.withValues(alpha: 0.7),
-      ];
-    } else {
-      return [
-        AppTheme.disconnectedRed,
-        AppTheme.disconnectedRed.withValues(alpha: 0.7),
-      ];
+      return [AppTheme.connectingBlue, AppTheme.connectingBlue.withOpacity(0.7)];
     }
+    if (isConfiguring) {
+      return [Colors.amber.shade400, Colors.amber.shade600];
+    }
+    if (isConnected) {
+      return [AppTheme.connectedGreen, AppTheme.connectedGreen.withValues(alpha: 0.7)];
+    }
+    return [AppTheme.disconnectedRed, AppTheme.disconnectedRed.withValues(alpha: 0.7)];
   }
 
-  IconData _getButtonIcon(bool isConnected, bool isConnecting) {
-    if (isConnecting) return Icons.sync;
+  IconData _getButtonIcon(bool isConnected, bool isConnecting, bool isConfiguring) {
+    if (isConnecting || isConfiguring) return Icons.sync;
     return isConnected ? Icons.power_off : Icons.power_settings_new;
   }
 
-  String _getButtonText(bool isConnected, bool isConnecting, bool hasConfigs) {
+  String _getButtonText(
+    bool isConnected,
+    bool isConnecting,
+    bool hasConfigs,
+    bool isConfiguring,
+  ) {
     if (isConnecting) return 'Connecting...';
+    if (isConfiguring) return 'در حال پیکربندی';
     if (isConnected) return 'Disconnect';
     if (hasConfigs) return 'Connect';
     return 'No Servers';

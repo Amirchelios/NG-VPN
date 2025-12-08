@@ -10,7 +10,7 @@ import '../widgets/error_snackbar.dart';
 import '../utils/app_localizations.dart';
 
 class StoreScreen extends StatefulWidget {
-  const StoreScreen({Key? key}) : super(key: key);
+  const StoreScreen({super.key});
 
   @override
   State<StoreScreen> createState() => _StoreScreenState();
@@ -70,7 +70,7 @@ class _StoreScreenState extends State<StoreScreen> {
     } catch (e) {
       setState(() {
         _errorMessage =
-            context.tr(TranslationKeys.errorNetwork) + ': ${e.toString()}';
+            '${context.tr(TranslationKeys.errorNetwork)}: ${e.toString()}';
         _isLoading = false;
       });
     }
@@ -142,7 +142,7 @@ class _StoreScreenState extends State<StoreScreen> {
     } catch (e) {
       ErrorSnackbar.show(
         context,
-        context.tr(TranslationKeys.errorUnknown) + ': ${e.toString()}',
+        '${context.tr(TranslationKeys.errorUnknown)}: ${e.toString()}',
       );
     }
   }

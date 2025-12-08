@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 import '../utils/app_localizations.dart';
 
 class HostCheckerScreen extends StatefulWidget {
-  const HostCheckerScreen({Key? key}) : super(key: key);
+  const HostCheckerScreen({super.key});
 
   @override
   State<HostCheckerScreen> createState() => _HostCheckerScreenState();
@@ -326,7 +326,7 @@ class _HostCheckerScreenState extends State<HostCheckerScreen> {
                 SizedBox(
                   width: 120,
                   child: DropdownButtonFormField<int>(
-                    value: _timeoutSeconds,
+                    initialValue: _timeoutSeconds,
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(

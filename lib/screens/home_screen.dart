@@ -27,6 +27,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _urlController = TextEditingController();
   bool _isAutoSelecting = false;
+  _ConnectMode _connectMode = _ConnectMode.none;
 
   @override
   void initState() {
@@ -39,7 +40,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onProviderChanged() {
-    // Ping functionality removed
+    final provider = Provider.of<V2RayProvider>(context, listen: false);
+    // Sync UI focus with current connection state
+    if (provider.isConnecting) return;
+    if (provider.activeConfig?.id == V2RayProvider.smartModeConfigId) {
+      setState(() => _connectMode = _ConnectMode.smart);
+    } else if (provider.activeConfig != null) {
+      setState(() => _connectMode = _ConnectMode.simple);
+    } else {
+      setState(() => _connectMode = _ConnectMode.none);
+    }
   }
 
   @override
@@ -540,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(height: 24),
                                         FractionallySizedBox(
                                           widthFactor: 0.85,
-                                          child: const ConnectionButton(),
+                                          child: _buildAnimatedConnectArea(),
                                         ),
                                         const SizedBox(height: 32),
                                       ],
@@ -997,5 +1007,247 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildAnimatedConnectArea() {
+    final provider = context.watch<V2RayProvider>();
+    final isSmartActive =
+        provider.activeConfig?.id == V2RayProvider.smartModeConfigId;
+    final isConnecting = provider.isConnecting;
+    final isAnyConnected = provider.activeConfig != null || isConnecting;
+
+    // Keep UI focus consistent with actual state
+    final focusedMode = isSmartActive
+        ? _ConnectMode.smart
+        : isAnyConnected
+            ? _ConnectMode.simple
+            : _connectMode;
+
+    final bool showDual = focusedMode == _ConnectMode.none;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      switchInCurve: Curves.easeOutBack,
+      switchOutCurve: Curves.easeInBack,
+      child: showDual
+          ? Row(
+              key: const ValueKey('dual'),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    ConnectionButton(
+                      onFocused: () {
+                        setState(() => _connectMode = _ConnectMode.simple);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'روش ساده',
+                      style: TextStyle(
+                        color: AppTheme.textGrey,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  children: [
+                    SmartMethodButton(
+                      onFocused: () {
+                        setState(() => _connectMode = _ConnectMode.smart);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const SizedBox(
+                      width: 170,
+                      child: Column(
+                        children: [
+                          Text(
+                            'روش هوشمند',
+                            style: TextStyle(
+                              color: AppTheme.textGrey,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'توییتر | اینستاگرام | یوتیوب',
+                            style: TextStyle(
+                              color: AppTheme.textGrey,
+                              fontSize: 11,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Center(
+              key: ValueKey(focusedMode),
+              child: AnimatedScale(
+                scale: 1.05,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 250),
+                  opacity: 1.0,
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutBack,
+                    alignment: Alignment.center,
+                    child: focusedMode == _ConnectMode.smart
+                        ? SmartMethodButton(
+                            onFocused: () {
+                              setState(
+                                () => _connectMode = _ConnectMode.smart,
+                              );
+                            },
+                            bigMode: true,
+                          )
+                        : ConnectionButton(
+                            onFocused: () {
+                              setState(
+                                () => _connectMode = _ConnectMode.simple,
+                              );
+                            },
+                            bigMode: true,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+enum _ConnectMode { none, simple, smart }
+class SmartMethodButton extends StatelessWidget {
+  final VoidCallback? onFocused;
+  final bool bigMode;
+
+  const SmartMethodButton({
+    super.key,
+    this.onFocused,
+    this.bigMode = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<V2RayProvider>(
+      builder: (context, provider, _) {
+        final isSmartActive =
+            provider.activeConfig?.id == V2RayProvider.smartModeConfigId;
+        final isConnecting = provider.isConnecting;
+
+        return GestureDetector(
+          onTap: () async {
+            onFocused?.call();
+            if (isConnecting) return;
+            if (isSmartActive) {
+              await provider.disconnect();
+            } else {
+              await provider.connectSmartMode();
+            }
+          },
+          child: Container(
+            width: bigMode ? 160 : 150,
+            height: bigMode ? 160 : 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: _buttonColor(isSmartActive, isConnecting)
+                      .withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: _gradient(isSmartActive, isConnecting),
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: bigMode ? 140 : 130,
+                    height: bigMode ? 140 : 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Colors.white.withOpacity(0.18),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isSmartActive ? Icons.shield : Icons.auto_awesome,
+                        color: Colors.white,
+                        size: 42,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isConnecting
+                            ? 'در حال اتصال...'
+                            : isSmartActive
+                                ? 'قطع روش هوشمند'
+                                : 'اتصال هوشمند',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isConnecting)
+                    Positioned.fill(
+                      child: CircularProgressIndicator(
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _buttonColor(bool isActive, bool isConnecting) {
+    if (isConnecting) return AppTheme.connectingBlue;
+    return isActive ? AppTheme.connectedGreen : AppTheme.primaryBlue;
+  }
+
+  List<Color> _gradient(bool isActive, bool isConnecting) {
+    if (isConnecting) {
+      return [AppTheme.connectingBlue, AppTheme.connectingBlue.withOpacity(0.7)];
+    }
+    if (isActive) {
+      return [AppTheme.connectedGreen, AppTheme.connectedGreen.withOpacity(0.7)];
+    }
+    return [AppTheme.primaryBlue, AppTheme.primaryBlue.withOpacity(0.7)];
   }
 }

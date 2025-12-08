@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/wallpaper_service.dart';
 
 class ConnectionStatus extends StatelessWidget {
-  const ConnectionStatus({Key? key}) : super(key: key);
+  const ConnectionStatus({super.key});
 
   @override
   Widget build(BuildContext context) {

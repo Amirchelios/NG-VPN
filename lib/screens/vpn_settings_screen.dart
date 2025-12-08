@@ -10,7 +10,7 @@ import '../providers/v2ray_provider.dart';
 const String _pingBatchSizeKey = 'ping_batch_size';
 
 class VpnSettingsScreen extends StatefulWidget {
-  const VpnSettingsScreen({Key? key}) : super(key: key);
+  const VpnSettingsScreen({super.key});
 
   @override
   State<VpnSettingsScreen> createState() => _VpnSettingsScreenState();
@@ -247,7 +247,7 @@ class _VpnSettingsScreenState extends State<VpnSettingsScreen> {
                                       });
                                     },
                                     // Updated deprecated activeThumbColor to activeColor
-                                    activeColor: AppTheme.primaryGreen,
+                                    activeThumbColor: AppTheme.primaryGreen,
                                   ),
                                 ],
                               ),
@@ -365,7 +365,7 @@ class _VpnSettingsScreenState extends State<VpnSettingsScreen> {
                                       // Update the provider's proxy mode state
                                       v2rayProvider.toggleProxyMode(value);
                                     },
-                                    activeColor: AppTheme.primaryGreen,
+                                    activeThumbColor: AppTheme.primaryGreen,
                                   ),
                                 ],
                               ),
@@ -466,7 +466,7 @@ class _VpnSettingsScreenState extends State<VpnSettingsScreen> {
                                       });
                                     },
                                     // Updated deprecated activeThumbColor to activeColor
-                                    activeColor: AppTheme.primaryGreen,
+                                    activeThumbColor: AppTheme.primaryGreen,
                                   ),
                                 ],
                               ),

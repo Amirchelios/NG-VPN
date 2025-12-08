@@ -3,7 +3,7 @@ import 'package:proxycloud/services/ping_service.dart';
 import 'package:proxycloud/services/v2ray_service.dart';
 
 class PingTestScreen extends StatefulWidget {
-  const PingTestScreen({Key? key}) : super(key: key);
+  const PingTestScreen({super.key});
 
   @override
   State<PingTestScreen> createState() => _PingTestScreenState();
@@ -21,7 +21,7 @@ class _PingTestScreenState extends State<PingTestScreen> {
   bool _isLoading = false;
   String _networkType = 'Unknown';
 
-  List<PingResult> _continuousPingResults = [];
+  final List<PingResult> _continuousPingResults = [];
   Stream<PingResult>? _continuousPingStream;
 
   final V2RayService _v2rayService = V2RayService();

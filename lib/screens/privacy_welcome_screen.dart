@@ -12,7 +12,7 @@ import '../providers/language_provider.dart';
 import '../widgets/error_snackbar.dart';
 
 class PrivacyWelcomeScreen extends StatefulWidget {
-  const PrivacyWelcomeScreen({Key? key}) : super(key: key);
+  const PrivacyWelcomeScreen({super.key});
 
   @override
   State<PrivacyWelcomeScreen> createState() => _PrivacyWelcomeScreenState();

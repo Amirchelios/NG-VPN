@@ -14,12 +14,12 @@ class ServerBottomSheet extends StatefulWidget {
   final Future<void> Function(V2RayConfig) onConfigSelected;
 
   const ServerBottomSheet({
-    Key? key,
+    super.key,
     required this.configs,
     required this.selectedConfig,
     required this.isConnecting,
     required this.onConfigSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<ServerBottomSheet> createState() => _ServerBottomSheetState();

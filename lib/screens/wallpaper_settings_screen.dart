@@ -264,7 +264,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
                   _toggleGlassBackground(value);
                 });
               },
-              activeColor: AppTheme.primaryBlue,
+              activeThumbColor: AppTheme.primaryBlue,
             ),
           ],
         ),
@@ -552,8 +552,7 @@ class _WallpaperSettingsScreenState extends State<WallpaperSettingsScreen> {
 class FullScreenWallpaperViewer extends StatelessWidget {
   final String imagePath;
 
-  const FullScreenWallpaperViewer({Key? key, required this.imagePath})
-    : super(key: key);
+  const FullScreenWallpaperViewer({super.key, required this.imagePath});
 
   @override
   Widget build(BuildContext context) {

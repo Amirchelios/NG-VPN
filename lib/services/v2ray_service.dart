@@ -345,6 +345,99 @@ class V2RayService extends ChangeNotifier {
     }
   }
 
+  // Start V2Ray using a full raw configuration JSON (for custom modes)
+  Future<bool> connectWithRawConfig({
+    required V2RayConfig config,
+    bool proxyOnly = false,
+  }) async {
+    try {
+      await initialize();
+
+      // Fresh stats for new session
+      await resetUsageStats();
+
+      // Request permission if needed (for VPN mode)
+      bool hasPermission = await _flutterV2ray.requestPermission();
+      if (!hasPermission) {
+        debugPrint('VPN permission not granted');
+        return false;
+      }
+
+      // Get settings from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+
+      // Bypass subnets settings
+      final bool bypassEnabled =
+          prefs.getBool('bypass_subnets_enabled') ?? false;
+      List<String>? bypassSubnets;
+
+      if (bypassEnabled) {
+        final String savedSubnets = prefs.getString('bypass_subnets') ?? '';
+        if (savedSubnets.isNotEmpty) {
+          bypassSubnets = savedSubnets.trim().split('\n');
+        }
+      }
+
+      // Save the proxy mode setting to SharedPreferences
+      await prefs.setBool('proxy_mode_enabled', proxyOnly);
+
+      // Get blocked apps from shared preferences
+      final blockedAppsList = prefs.getStringList('blocked_apps');
+
+      await _flutterV2ray.startV2Ray(
+        remark: config.remark,
+        config: config.fullConfig,
+        blockedApps: blockedAppsList,
+        bypassSubnets: bypassSubnets,
+        proxyOnly: proxyOnly,
+        notificationDisconnectButtonName: "DISCONNECT",
+      );
+
+      config.isConnected = true;
+      config.isProxyMode = proxyOnly;
+      _activeConfig = config;
+      _lastConnectionTime = DateTime.now();
+
+      // Save active config to persistent storage
+      await _saveActiveConfig(config);
+
+      // Start monitoring usage statistics
+      _startUsageMonitoring();
+
+      // Verify the connection was actually established
+      await Future.delayed(const Duration(milliseconds: 500));
+      final connectionVerified = await isActuallyConnected();
+      if (!connectionVerified) {
+        debugPrint('Connection verification failed for raw config');
+        await disconnect();
+        return false;
+      }
+
+      // Fetch IP information after a short delay to ensure connection is stable
+      Future.delayed(const Duration(seconds: 2), () {
+        fetchIpInfo()
+            .then((ipInfo) {
+              debugPrint(
+                'IP Info fetched after raw connect: ${ipInfo.ip} - ${ipInfo.country}',
+              );
+            })
+            .catchError(
+              (e) => debugPrint('Error fetching IP info after raw connect: $e'),
+            );
+      });
+
+      return true;
+    } catch (e) {
+      debugPrint('Error connecting with raw config: $e');
+      try {
+        await disconnect();
+      } catch (disconnectError) {
+        debugPrint('Error cleaning up after raw connection failure: $disconnectError');
+      }
+      return false;
+    }
+  }
+
   Future<void> disconnect() async {
     try {
       // Stop usage monitoring
@@ -563,15 +656,15 @@ class V2RayService extends ChangeNotifier {
         }
 
         final parser = V2ray.parseFromURL(config.fullConfig);
-        final delay = await _flutterV2ray
-            .getServerDelay(config: parser.getFullConfiguration())
-            .timeout(
-              const Duration(seconds: 5), // Reduced timeout for faster response
-              onTimeout: () {
-                debugPrint('V2Ray ping timeout for ${config.remark}');
-                throw Exception('V2Ray ping timeout');
-              },
-            );
+      final delay = await _flutterV2ray
+          .getServerDelay(config: parser.getFullConfiguration())
+          .timeout(
+            const Duration(seconds: 2), // Faster timeout
+            onTimeout: () {
+              debugPrint('V2Ray ping timeout for ${config.remark}');
+              throw Exception('V2Ray ping timeout');
+            },
+          );
 
         // Check for cancellation after getting delay
         if (cancellationToken?.isCancelled == true) {
@@ -1162,7 +1255,7 @@ class V2RayService extends ChangeNotifier {
       final delay = await _flutterV2ray
           .getServerDelay(config: parser.getFullConfiguration())
           .timeout(
-            const Duration(seconds: 3), // Further reduced timeout for maximum speed
+            const Duration(seconds: 2), // Further reduced timeout for maximum speed
             onTimeout: () {
               debugPrint('V2Ray fast ping timeout for ${config.remark}');
               return -1; // Return -1 on timeout for faster failure

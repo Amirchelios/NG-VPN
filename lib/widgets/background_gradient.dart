@@ -7,7 +7,7 @@ import '../services/wallpaper_service.dart';
 class BackgroundGradient extends StatelessWidget {
   final Widget child;
 
-  const BackgroundGradient({Key? key, required this.child}) : super(key: key);
+  const BackgroundGradient({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {

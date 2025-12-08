@@ -11,7 +11,7 @@ import '../theme/app_theme.dart';
 import '../utils/app_localizations.dart';
 
 class WallpaperStoreScreen extends StatefulWidget {
-  const WallpaperStoreScreen({Key? key}) : super(key: key);
+  const WallpaperStoreScreen({super.key});
 
   @override
   State<WallpaperStoreScreen> createState() => _WallpaperStoreScreenState();
@@ -381,8 +381,7 @@ class _WallpaperItem extends StatelessWidget {
 class FullScreenImageViewer extends StatefulWidget {
   final String imageUrl;
 
-  const FullScreenImageViewer({Key? key, required this.imageUrl})
-    : super(key: key);
+  const FullScreenImageViewer({super.key, required this.imageUrl});
 
   @override
   State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
