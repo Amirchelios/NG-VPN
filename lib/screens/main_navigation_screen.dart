@@ -23,7 +23,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const TelegramProxyScreen(),
-    const StoreScreen(),
+    const SizedBox.shrink(), // Store tab disabled
     const ToolsScreen(),
   ];
 
@@ -116,9 +116,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: BottomNavigationBar(
                 currentIndex: _currentIndex,
                 onTap: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
+                  // Skip disabled store tab
+                  if (index == 2) return;
+                  setState(() => _currentIndex = index);
                 },
                 backgroundColor: AppTheme.surfaceContainer,
                 elevation: 8,
@@ -157,22 +157,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             : Colors.transparent,
                       ),
                       child: const Icon(Icons.telegram_rounded),
-                    ),
-                    label: context.tr(TranslationKeys.navProxy),
                   ),
-                  BottomNavigationBarItem(
-                    icon: Container(
-                      padding: const EdgeInsets.all(4.0),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _currentIndex == 2
-                            ? AppTheme.primaryBlue.withOpacity(0.2)
-                            : Colors.transparent,
-                      ),
-                      child: const Icon(Icons.storefront_rounded),
+                  label: context.tr(TranslationKeys.navProxy),
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(4.0),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.transparent,
                     ),
-                    label: context.tr(TranslationKeys.navStore),
+                    child: Icon(
+                      Icons.storefront_rounded,
+                      color: Colors.grey.withOpacity(0.4),
+                    ),
                   ),
+                  label: '${context.tr(TranslationKeys.navStore)} (غیرفعال)',
+                ),
                   BottomNavigationBarItem(
                     icon: Container(
                       padding: const EdgeInsets.all(4.0),
