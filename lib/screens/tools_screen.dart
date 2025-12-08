@@ -10,7 +10,6 @@ import 'ip_info_screen.dart';
 import 'subscription_management_screen.dart';
 import 'vpn_settings_screen.dart';
 import 'per_app_tunnel_screen.dart';
-import 'backup_restore_screen.dart';
 import 'wallpaper_store_screen.dart';
 import 'battery_settings_screen.dart';
 import 'language_settings_screen.dart';
@@ -166,20 +165,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const BatterySettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsBackupRestore),
-                  description: context.tr('tools.backup_restore_desc'),
-                  icon: Icons.backup,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const BackupRestoreScreen(),
                       ),
                     );
                   },

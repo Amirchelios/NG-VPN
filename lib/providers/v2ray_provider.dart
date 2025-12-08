@@ -197,6 +197,8 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   Timer? _connectionHealthTimer;
   int _connectionHealthFailures = 0;
   String? _healthMonitorConfigId;
+  bool _isPreconfiguring = false;
+  String? _preselectedConfigId;
 
   // Method channel for VPN control
   static const platform = MethodChannel('com.cloud.pira/vpn_control');
@@ -209,9 +211,18 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   bool get isLoading => _isLoading;
   bool get isLoadingServers => _isLoadingServers;
   bool get isInitializing => _isInitializing; // New getter
+  bool get isPreconfiguring => _isPreconfiguring;
   String get errorMessage => _errorMessage;
   V2RayService get v2rayService => _v2rayService;
   bool get isProxyMode => _isProxyMode;
+  V2RayConfig? get preselectedConfig {
+    if (_preselectedConfigId == null) return null;
+    try {
+      return _configs.firstWhere((c) => c.id == _preselectedConfigId);
+    } catch (_) {
+      return null;
+    }
+  }
 
   // Expose V2Ray status for real-time traffic monitoring
   V2RayStatus? get currentStatus => _v2rayService.currentStatus;
@@ -263,6 +274,8 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     _isInitializing = true; // Set initialization flag
     notifyListeners();
 
+    const updateInterval = Duration(hours: 24);
+
     try {
       await _v2rayService.initialize();
 
@@ -283,16 +296,16 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       final prefs = await SharedPreferences.getInstance();
       _isProxyMode = prefs.getBool('proxy_mode_enabled') ?? false;
 
-      // Update all subscriptions on app start with fresh data
-      // Only update if we have subscriptions to avoid unnecessary operations
-      if (_subscriptions.isNotEmpty) {
-        debugPrint('Updating all subscriptions with fresh data...');
-        await updateAllSubscriptions();
-        debugPrint('Finished updating all subscriptions');
-      }
+      // Startup: skip automatic subscription refresh to speed up launch.
+      // User can refresh manually from UI when needed.
 
       // CRITICAL FIX: Enhanced synchronization with actual VPN service state
       await _enhancedSyncWithVpnServiceState();
+
+      // Start a quick preconfiguration to find a best server for simple mode
+      if (_configs.isNotEmpty) {
+        unawaited(_preselectBestServer());
+      }
 
       notifyListeners();
     } catch (e) {
@@ -1319,6 +1332,38 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     _connectionHealthTimer = null;
     _healthMonitorConfigId = null;
     _connectionHealthFailures = 0;
+  }
+
+  Future<void> _preselectBestServer() async {
+    if (_isPreconfiguring) return;
+    _isPreconfiguring = true;
+    notifyListeners();
+    try {
+      final result = await AutoSelectUtil.runAutoSelect(
+        _configs,
+        _v2rayService,
+        fastMode: true,
+      ).timeout(const Duration(seconds: 5), onTimeout: () {
+        return AutoSelectResult(
+          selectedConfig: null,
+          bestPing: null,
+          errorMessage: 'timeout',
+        );
+      });
+
+      if (result.selectedConfig != null) {
+        _preselectedConfigId = result.selectedConfig!.id;
+      } else if (_configs.isNotEmpty) {
+        _preselectedConfigId = _configs.first.id;
+      }
+    } catch (_) {
+      if (_configs.isNotEmpty) {
+        _preselectedConfigId = _configs.first.id;
+      }
+    } finally {
+      _isPreconfiguring = false;
+      notifyListeners();
+    }
   }
 
   void clearError() {

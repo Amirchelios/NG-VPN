@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/v2ray_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/language_provider.dart';
@@ -1030,11 +1031,14 @@ class _HomeScreenState extends State<HomeScreen> {
       switchInCurve: Curves.easeOutBack,
       switchOutCurve: Curves.easeInBack,
       child: showDual
-          ? Row(
+          ? Wrap(
               key: const ValueKey('dual'),
-              mainAxisAlignment: MainAxisAlignment.center,
+              alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 10,
               children: [
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     ConnectionButton(
                       onFocused: () {
@@ -1051,8 +1055,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(width: 16),
                 Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     SmartMethodButton(
                       onFocused: () {
@@ -1156,80 +1160,64 @@ class SmartMethodButton extends StatelessWidget {
               await provider.connectSmartMode();
             }
           },
-          child: Container(
-            width: bigMode ? 160 : 150,
-            height: bigMode ? 160 : 150,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: _buttonColor(isSmartActive, isConnecting)
-                      .withValues(alpha: 0.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: _gradient(isSmartActive, isConnecting),
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: bigMode ? 170 : 160,
+                height: bigMode ? 170 : 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _buttonColor(isSmartActive, isConnecting)
+                          .withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: bigMode ? 140 : 130,
-                    height: bigMode ? 140 : 130,
+              if (isConnecting)
+                ...List.generate(2, (i) {
+                  final base = bigMode ? 150 : 140;
+                  final size = base + i * 12;
+                  return Container(
+                    width: size.toDouble(),
+                    height: size.toDouble(),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.18),
-                          Colors.transparent,
-                        ],
+                      border: Border.all(
+                        color: _buttonColor(isSmartActive, isConnecting)
+                            .withValues(alpha: 0.3 - i * 0.08),
+                        width: 2 - i * 0.3,
                       ),
                     ),
-                  ),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        isSmartActive ? Icons.shield : Icons.auto_awesome,
-                        color: Colors.white,
-                        size: 42,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        isConnecting
-                            ? 'در حال اتصال...'
-                            : isSmartActive
-                                ? 'قطع روش هوشمند'
-                                : 'اتصال هوشمند',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (isConnecting)
-                    Positioned.fill(
-                      child: CircularProgressIndicator(
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(Colors.white),
-                        strokeWidth: 3,
-                      ),
+                  )
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .scaleXY(
+                        begin: 0.95,
+                        end: 1.08 + i * 0.03,
+                        duration: 900.ms,
+                      );
+                }),
+              if (isConnecting)
+                Container(
+                  width: bigMode ? 150 : 140,
+                  height: bigMode ? 150 : 140,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: SweepGradient(
+                      colors: [
+                        _buttonColor(isSmartActive, isConnecting)
+                            .withValues(alpha: 0.2),
+                        Colors.transparent,
+                      ],
                     ),
-                ],
-              ),
-            ),
+                  ),
+                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.5.seconds),
+              _buildSmartCore(isSmartActive, isConnecting, bigMode),
+            ],
           ),
         );
       },
@@ -1249,5 +1237,85 @@ class SmartMethodButton extends StatelessWidget {
       return [AppTheme.connectedGreen, AppTheme.connectedGreen.withOpacity(0.7)];
     }
     return [AppTheme.primaryBlue, AppTheme.primaryBlue.withOpacity(0.7)];
+  }
+
+  Widget _buildSmartCore(
+      bool isActive, bool isConnecting, bool bigMode) {
+    final core = Container(
+      width: bigMode ? 155 : 145,
+      height: bigMode ? 155 : 145,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: _gradient(isActive, isConnecting),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _buttonColor(isActive, isConnecting).withValues(alpha: 0.55),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: bigMode ? 140 : 130,
+            height: bigMode ? 140 : 130,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.white.withOpacity(0.2),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isActive ? Icons.shield : Icons.auto_awesome,
+                color: Colors.white,
+                size: 42,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isConnecting
+                    ? 'در حال اتصال...'
+                    : isActive
+                        ? 'قطع روش هوشمند'
+                        : 'اتصال هوشمند',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          if (isConnecting)
+            Positioned.fill(
+              child: CircularProgressIndicator(
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 3,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (isConnecting) {
+      return core
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(begin: 0.96, end: 1.04, duration: 850.ms, curve: Curves.easeInOut);
+    }
+    return core;
   }
 }

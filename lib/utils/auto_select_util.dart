@@ -309,6 +309,19 @@ class AutoSelectUtil {
       debugPrint('Error saving last best server: $e');
     }
   }
+
+  /// Quick helper to get last best config from cache (if still fresh)
+  static Future<V2RayConfig?> getLastBestConfig(
+    List<V2RayConfig> configs,
+  ) async {
+    final lastBest = await _loadLastBest();
+    if (lastBest == null || !lastBest.isFresh) return null;
+    try {
+      return configs.firstWhere((c) => c.id == lastBest.configId);
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 class _CachedPing {

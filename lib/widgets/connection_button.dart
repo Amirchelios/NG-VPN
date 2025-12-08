@@ -102,7 +102,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     );
 
     try {
-      // Run auto-select algorithm with cancellation support and status updates
+      // Run auto-select algorithm with cancellation support and status updates.
+      // Add overall timeout to avoid hanging.
       final result = await AutoSelectUtil.runAutoSelect(
         provider.configs,
         provider.v2rayService,
@@ -112,6 +113,13 @@ class _ConnectionButtonState extends State<ConnectionButton> {
         },
         cancellationToken: _autoSelectCancellationToken,
         fastMode: true,
+      ).timeout(
+        const Duration(seconds: 7),
+        onTimeout: () => AutoSelectResult(
+          selectedConfig: null,
+          bestPing: null,
+          errorMessage: 'timeout',
+        ),
       );
 
       // Check if operation was cancelled
@@ -142,13 +150,27 @@ class _ConnectionButtonState extends State<ConnectionButton> {
           provider.isProxyMode,
         );
       } else {
-        // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? 'Auto-select failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Fallback: connect to first available config to avoid being stuck
+        if (provider.configs.isNotEmpty) {
+          final fallback = provider.configs.first;
+          await provider.selectConfig(fallback);
+          await provider.connectToServer(fallback, provider.isProxyMode);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result.errorMessage ?? 'سرور سریع پیدا نشد؛ اتصال به اولین سرور.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.errorMessage ?? 'Auto-select failed'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       // Close the dialog
@@ -203,13 +225,15 @@ class _ConnectionButtonState extends State<ConnectionButton> {
         final isConnecting = provider.isConnecting;
         final selectedConfig = provider.selectedConfig;
         final hasConfigs = provider.configs.isNotEmpty;
-        final isConfiguring = _isConfiguring && !isConnecting && !isConnected;
+        final isPreconfiguring = provider.isPreconfiguring;
+        final isConfiguring =
+            (_isConfiguring && !isConnecting && !isConnected) || isPreconfiguring;
 
         return GestureDetector(
           onTap: () async {
             widget.onFocused?.call();
             // Prevent multiple taps while connecting or initializing
-            if (isConnecting || provider.isInitializing) {
+            if (isConnecting || provider.isInitializing || isPreconfiguring) {
               return;
             }
 
@@ -217,15 +241,24 @@ class _ConnectionButtonState extends State<ConnectionButton> {
               if (isConnected) {
                 await provider.disconnect();
               } else if (selectedConfig != null) {
+                // اتصال به سرور انتخاب‌شده
                 await provider.connectToServer(
                   selectedConfig,
                   provider.isProxyMode,
                 );
               } else if (hasConfigs) {
-                // No server selected, run auto-select and then connect
-                await _runAutoSelectAndConnect(context, provider);
+                // اگر پیش‌انتخاب وجود دارد همان را وصل کن، وگرنه انتخاب خودکار سریع
+                final preselected = provider.preselectedConfig;
+                if (preselected != null) {
+                  await provider.selectConfig(preselected);
+                  await provider.connectToServer(
+                    preselected,
+                    provider.isProxyMode,
+                  );
+                } else {
+                  await _runAutoSelectAndConnect(context, provider);
+                }
               } else {
-                // Show a message if no configs are available
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -240,7 +273,6 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                 );
               }
             } catch (e) {
-              // Show error message
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -256,16 +288,16 @@ class _ConnectionButtonState extends State<ConnectionButton> {
             }
           },
           child: Container(
-            width: widget.bigMode ? 190 : 180,
-            height: widget.bigMode ? 190 : 180,
+            width: widget.bigMode ? 160 : 145,
+            height: widget.bigMode ? 160 : 145,
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 // Ambient blur halo
                 Container(
-                  width: widget.bigMode ? 210 : 200,
-                  height: widget.bigMode ? 210 : 200,
+                  width: widget.bigMode ? 205 : 195,
+                  height: widget.bigMode ? 205 : 195,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -285,8 +317,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                 // Pulsing rings
                 if (isConnecting || isConfiguring)
                   ...List.generate(2, (i) {
-                    final baseSize = widget.bigMode ? 155 : 145;
-                    final start = baseSize + i * 14;
+                    final baseSize = widget.bigMode ? 150 : 140;
+                    final start = baseSize + i * 12;
                     return Container(
                       width: start.toDouble(),
                       height: start.toDouble(),
@@ -336,96 +368,33 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                       .animate(onPlay: (c) => c.repeat())
                       .rotate(duration: 2.seconds),
 
-                // Main button with enhanced design
-                Container(
-                  width: widget.bigMode ? 150 : 140,
-                  height: widget.bigMode ? 150 : 140,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: _getGradientColors(
-                        isConnected,
-                        isConnecting,
-                        isConfiguring,
-                      ),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _getButtonColor(
-                          isConnected,
-                          isConnecting,
-                          isConfiguring,
-                        ).withOpacity(0.55),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Inner glow effect
-                      Container(
-                        width: widget.bigMode ? 140 : 130,
-                        height: widget.bigMode ? 140 : 130,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.25),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Icon with label
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _getButtonIcon(isConnected, isConnecting, isConfiguring),
-                            color: Colors.white,
-                            size: 50,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _getButtonText(
-                              isConnected,
-                              isConnecting,
-                              hasConfigs,
-                              isConfiguring,
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                // Secondary sweep for extra dynamism
+                if (isConnecting || isConfiguring)
+                  Container(
+                    width: widget.bigMode ? 150 : 140,
+                    height: widget.bigMode ? 150 : 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: SweepGradient(
+                        startAngle: 0.4,
+                        endAngle: 6.0,
+                        colors: [
+                          Colors.white.withOpacity(0.08),
+                          Colors.transparent,
                         ],
                       ),
-
-                      // Progress indicator when connecting/configuring
-                      if (isConnecting || isConfiguring)
-                        Positioned.fill(
-                          child: CircularProgressIndicator(
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                            strokeWidth: 3,
-                          ),
-                        ),
-                    ],
-                  ),
-                ).animate().scaleXY(
-                      begin: 0.97,
-                      end: 1.0,
-                      duration: 220.ms,
-                      curve: Curves.easeOutBack,
                     ),
+                  )
+                      .animate(onPlay: (c) => c.repeat())
+                      .rotate(duration: 3.seconds, begin: 0.25, end: 1.25),
+
+                // Main button with enhanced design
+                _buildAnimatedCore(
+                  isConnecting: isConnecting,
+                  isConfiguring: isConfiguring,
+                  isConnected: isConnected,
+                  hasConfigs: hasConfigs,
+                ),
               ],
             ),
           ),
@@ -473,5 +442,110 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     if (isConnected) return 'Disconnect';
     if (hasConfigs) return 'Connect';
     return 'No Servers';
+  }
+  Widget _buildAnimatedCore({
+    required bool isConnecting,
+    required bool isConfiguring,
+    required bool isConnected,
+    required bool hasConfigs,
+  }) {
+    final core = Container(
+      width: widget.bigMode ? 160 : 140,
+      height: widget.bigMode ? 160 : 140,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _getGradientColors(
+            isConnected,
+            isConnecting,
+            isConfiguring,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _getButtonColor(
+              isConnected,
+              isConnecting,
+              isConfiguring,
+            ).withOpacity(0.55),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Inner glow effect
+          Container(
+            width: widget.bigMode ? 150 : 130,
+            height: widget.bigMode ? 150 : 130,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Colors.white.withOpacity(0.25),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+
+          // Icon with label
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _getButtonIcon(isConnected, isConnecting, isConfiguring),
+                color: Colors.white,
+                size: 50,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _getButtonText(
+                  isConnected,
+                  isConnecting,
+                  hasConfigs,
+                  isConfiguring,
+                ),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+
+          // Progress indicator when connecting/configuring
+          if (isConnecting || isConfiguring)
+            Positioned.fill(
+              child: CircularProgressIndicator(
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Colors.white,
+                ),
+                strokeWidth: 3,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (isConnecting || isConfiguring) {
+      return core
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scaleXY(begin: 0.96, end: 1.03, duration: 800.ms, curve: Curves.easeInOut)
+          .shimmer(delay: 0.ms, duration: 1200.ms, colors: [
+            Colors.white.withOpacity(0.15),
+            Colors.transparent,
+          ]);
+    }
+
+    return core
+        .animate()
+        .scaleXY(begin: 0.98, end: 1.0, duration: 220.ms, curve: Curves.easeOutBack);
   }
 }
