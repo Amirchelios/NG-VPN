@@ -1132,7 +1132,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 enum _ConnectMode { none, simple, smart }
-class SmartMethodButton extends StatelessWidget {
+class SmartMethodButton extends StatefulWidget {
   final VoidCallback? onFocused;
   final bool bigMode;
 
@@ -1143,29 +1143,54 @@ class SmartMethodButton extends StatelessWidget {
   });
 
   @override
+  State<SmartMethodButton> createState() => _SmartMethodButtonState();
+}
+
+class _SmartMethodButtonState extends State<SmartMethodButton> {
+  bool _requested = false;
+  bool _isCancelling = false;
+  bool _tapLocked = false;
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<V2RayProvider>(
       builder: (context, provider, _) {
         final isSmartActive =
             provider.activeConfig?.id == V2RayProvider.smartModeConfigId;
         final isConnecting = provider.isConnecting;
+        final isDisconnecting = isConnecting && isSmartActive;
+        final showCancel =
+            _requested && isConnecting && !isSmartActive && !_isCancelling;
+
+        // Reset request flag when connection flow ends
+        if (!isConnecting && _requested) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _requested = false);
+          });
+        }
 
         return GestureDetector(
           onTap: () async {
-            onFocused?.call();
-            if (isConnecting) return;
+            widget.onFocused?.call();
+            if (isConnecting || _tapLocked) return;
+            _tapLocked = true;
+            setState(() {
+              _requested = true;
+            });
             if (isSmartActive) {
               await provider.disconnect();
             } else {
               await provider.connectSmartMode();
             }
+            _tapLocked = false;
           },
           child: Stack(
+            clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
               Container(
-                width: bigMode ? 170 : 160,
-                height: bigMode ? 170 : 160,
+                width: widget.bigMode ? 170 : 160,
+                height: widget.bigMode ? 170 : 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -1180,7 +1205,7 @@ class SmartMethodButton extends StatelessWidget {
               ),
               if (isConnecting)
                 ...List.generate(2, (i) {
-                  final base = bigMode ? 150 : 140;
+                  final base = widget.bigMode ? 150 : 140;
                   final size = base + i * 12;
                   return Container(
                     width: size.toDouble(),
@@ -1203,8 +1228,8 @@ class SmartMethodButton extends StatelessWidget {
                 }),
               if (isConnecting)
                 Container(
-                  width: bigMode ? 150 : 140,
-                  height: bigMode ? 150 : 140,
+                  width: widget.bigMode ? 150 : 140,
+                  height: widget.bigMode ? 150 : 140,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: SweepGradient(
@@ -1216,7 +1241,85 @@ class SmartMethodButton extends StatelessWidget {
                     ),
                   ),
                 ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2.5.seconds),
-              _buildSmartCore(isSmartActive, isConnecting, bigMode),
+              _buildSmartCore(
+                isSmartActive,
+                isConnecting,
+                isDisconnecting,
+                widget.bigMode,
+              ),
+              if (showCancel)
+                Positioned(
+                  bottom: -50,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: _isCancelling
+                            ? null
+                            : () async {
+                                setState(() => _isCancelling = true);
+                                try {
+                                  await provider.disconnect();
+                                } catch (_) {}
+                                if (mounted) {
+                                  setState(() {
+                                    _isCancelling = false;
+                                    _requested = false;
+                                  });
+                                }
+                              },
+                        child: AnimatedOpacity(
+                          duration: 200.ms,
+                          opacity: _isCancelling ? 0.5 : 1,
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red.withOpacity(0.9),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 7),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                                width: 1.2,
+                              ),
+                            ),
+                            child: _isCancelling
+                                ? const Padding(
+                                    padding: EdgeInsets.all(14),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         );
@@ -1229,7 +1332,10 @@ class SmartMethodButton extends StatelessWidget {
     return isActive ? AppTheme.connectedGreen : AppTheme.primaryBlue;
   }
 
-  List<Color> _gradient(bool isActive, bool isConnecting) {
+  List<Color> _gradient(bool isActive, bool isConnecting, bool isDisconnecting) {
+    if (isDisconnecting) {
+      return [Colors.orange, Colors.orange.withOpacity(0.7)];
+    }
     if (isConnecting) {
       return [AppTheme.connectingBlue, AppTheme.connectingBlue.withOpacity(0.7)];
     }
@@ -1240,14 +1346,14 @@ class SmartMethodButton extends StatelessWidget {
   }
 
   Widget _buildSmartCore(
-      bool isActive, bool isConnecting, bool bigMode) {
+      bool isActive, bool isConnecting, bool isDisconnecting, bool bigMode) {
     final core = Container(
       width: bigMode ? 155 : 145,
       height: bigMode ? 155 : 145,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
-          colors: _gradient(isActive, isConnecting),
+          colors: _gradient(isActive, isConnecting, isDisconnecting),
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -1285,11 +1391,13 @@ class SmartMethodButton extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                isConnecting
-                    ? 'در حال اتصال...'
-                    : isActive
-                        ? 'قطع روش هوشمند'
-                        : 'اتصال هوشمند',
+                isDisconnecting
+                    ? 'Disconnecting...'
+                    : isConnecting
+                        ? 'Connecting...'
+                        : isActive
+                            ? 'قطع روش هوشمند'
+                            : 'اتصال هوشمند',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
@@ -1299,7 +1407,7 @@ class SmartMethodButton extends StatelessWidget {
               ),
             ],
           ),
-          if (isConnecting)
+          if (isConnecting || isDisconnecting)
             Positioned.fill(
               child: CircularProgressIndicator(
                 valueColor:
@@ -1311,11 +1419,13 @@ class SmartMethodButton extends StatelessWidget {
       ),
     );
 
-    if (isConnecting) {
+    if (isConnecting || isDisconnecting) {
       return core
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scaleXY(begin: 0.96, end: 1.04, duration: 850.ms, curve: Curves.easeInOut);
     }
-    return core;
+    return core
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 0.99, end: 1.01, duration: 1800.ms, curve: Curves.easeInOut);
   }
 }

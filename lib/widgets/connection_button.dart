@@ -23,6 +23,8 @@ class ConnectionButton extends StatefulWidget {
 
 class _ConnectionButtonState extends State<ConnectionButton> {
   bool _isConfiguring = false;
+  bool _isCancelling = false;
+  bool _tapLocked = false;
 
   // Cancellation token for auto-select operation
   AutoSelectCancellationToken? _autoSelectCancellationToken;
@@ -45,6 +47,23 @@ class _ConnectionButtonState extends State<ConnectionButton> {
         provider.configs.first,
         provider.isProxyMode,
       );
+    }
+  }
+
+  Future<void> _cancelCurrent(V2RayProvider provider) async {
+    if (_isCancelling) return;
+    setState(() {
+      _isCancelling = true;
+      _isConfiguring = false;
+    });
+    _autoSelectCancellationToken?.cancel();
+    try {
+      await provider.disconnect();
+    } catch (_) {}
+    if (mounted) {
+      setState(() {
+        _isCancelling = false;
+      });
     }
   }
 
@@ -102,18 +121,13 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     );
 
     try {
-      // Run auto-select algorithm with cancellation support and status updates.
-      // Add overall timeout to avoid hanging.
-      final result = await AutoSelectUtil.runAutoSelect(
-        provider.configs,
-        provider.v2rayService,
-        onStatusUpdate: (message) {
-          // Update status in the dialog
-          _autoSelectStatusStream.add(message);
-        },
+      // Run auto-select (ProxyCloud-only, no shadowsocks) with cancellation.
+      final result = await provider
+          .runSimpleAutoSelect(
         cancellationToken: _autoSelectCancellationToken,
-        fastMode: true,
-      ).timeout(
+        onStatusUpdate: (message) => _autoSelectStatusStream.add(message),
+      )
+          .timeout(
         const Duration(seconds: 7),
         onTimeout: () => AutoSelectResult(
           selectedConfig: null,
@@ -223,19 +237,31 @@ class _ConnectionButtonState extends State<ConnectionButton> {
 
         final isConnected = provider.activeConfig != null;
         final isConnecting = provider.isConnecting;
-        final selectedConfig = provider.selectedConfig;
+        final selectedConfig = (provider.selectedConfig?.id ==
+                V2RayProvider.smartModeConfigId)
+            ? null
+            : provider.selectedConfig;
         final hasConfigs = provider.configs.isNotEmpty;
         final isPreconfiguring = provider.isPreconfiguring;
         final isConfiguring =
             (_isConfiguring && !isConnecting && !isConnected) || isPreconfiguring;
+        final isDisconnecting = isConnecting && isConnected;
+        // Cancel درون خود دکمه انجام می‌شود، پس نمایش جداگانه نداریم
+        final showCancel = false;
+        final isBusy = isConnecting || isConfiguring || isDisconnecting;
 
         return GestureDetector(
           onTap: () async {
             widget.onFocused?.call();
-            // Prevent multiple taps while connecting or initializing
-            if (isConnecting || provider.isInitializing || isPreconfiguring) {
+            // اگر در حال اتصال/پیکربندی است، همین دکمه عمل کنسل را انجام دهد
+            if ((isConnecting || isConfiguring) && !_isCancelling) {
+              await _cancelCurrent(provider);
               return;
             }
+            if (isBusy || provider.isInitializing || _tapLocked) {
+              return;
+            }
+            _tapLocked = true;
 
             try {
               if (isConnected) {
@@ -285,19 +311,22 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                   ),
                 ),
               );
+            } finally {
+              _tapLocked = false;
             }
           },
           child: Container(
-            width: widget.bigMode ? 160 : 145,
-            height: widget.bigMode ? 160 : 145,
+            width: widget.bigMode ? 190 : 175,
+            height: widget.bigMode ? 190 : 175,
             decoration: const BoxDecoration(shape: BoxShape.circle),
             child: Stack(
+              clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                // Ambient blur halo
+                // Ambient blur halo (bigger)
                 Container(
-                  width: widget.bigMode ? 205 : 195,
-                  height: widget.bigMode ? 205 : 195,
+                  width: widget.bigMode ? 225 : 210,
+                  height: widget.bigMode ? 225 : 210,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -306,19 +335,19 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                           isConnected,
                           isConnecting,
                           isConfiguring,
-                        ).withOpacity(0.20),
-                        blurRadius: 28,
-                        spreadRadius: 6,
+                        ).withValues(alpha: 0.20),
+                        blurRadius: 30,
+                        spreadRadius: 8,
                       ),
                     ],
                   ),
                 ),
 
-                // Pulsing rings
-                if (isConnecting || isConfiguring)
+                // Pulsing rings + dual-color blinks
+                if (isConnecting || isConfiguring) ...[
                   ...List.generate(2, (i) {
-                    final baseSize = widget.bigMode ? 150 : 140;
-                    final start = baseSize + i * 12;
+                    final baseSize = widget.bigMode ? 160 : 148;
+                    final start = baseSize + i * 14;
                     return Container(
                       width: start.toDouble(),
                       height: start.toDouble(),
@@ -329,7 +358,7 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                             isConnected,
                             isConnecting,
                             isConfiguring,
-                          ).withOpacity(0.35 - i * 0.1),
+                          ).withValues(alpha: 0.35 - i * 0.1),
                           width: 2.2 - i * 0.4,
                         ),
                       ),
@@ -345,12 +374,35 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                         )
                         .fadeIn(duration: 250.ms);
                   }),
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.blue.withValues(alpha: 0.15),
+                      ),
+                    )
+                        .animate(onPlay: (c) => c.repeat())
+                        .fadeIn(duration: 450.ms)
+                        .fadeOut(duration: 450.ms),
+                  ),
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.red.withValues(alpha: 0.12),
+                      ),
+                    )
+                        .animate(onPlay: (c) => c.repeat())
+                        .fadeIn(delay: 280.ms, duration: 450.ms)
+                        .fadeOut(duration: 450.ms),
+                  ),
+                ],
 
                 // Rotating sweep
                 if (isConnecting || isConfiguring)
                   Container(
-                    width: widget.bigMode ? 175 : 165,
-                    height: widget.bigMode ? 175 : 165,
+                    width: widget.bigMode ? 195 : 182,
+                    height: widget.bigMode ? 195 : 182,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: SweepGradient(
@@ -359,7 +411,7 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                             isConnected,
                             isConnecting,
                             isConfiguring,
-                          ).withOpacity(0.25),
+                          ).withValues(alpha: 0.25),
                           Colors.transparent,
                         ],
                       ),
@@ -371,15 +423,15 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                 // Secondary sweep for extra dynamism
                 if (isConnecting || isConfiguring)
                   Container(
-                    width: widget.bigMode ? 150 : 140,
-                    height: widget.bigMode ? 150 : 140,
+                    width: widget.bigMode ? 175 : 162,
+                    height: widget.bigMode ? 175 : 162,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: SweepGradient(
                         startAngle: 0.4,
                         endAngle: 6.0,
                         colors: [
-                          Colors.white.withOpacity(0.08),
+                          Colors.white.withValues(alpha: 0.10),
                           Colors.transparent,
                         ],
                       ),
@@ -393,8 +445,71 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                   isConnecting: isConnecting,
                   isConfiguring: isConfiguring,
                   isConnected: isConnected,
+                  isDisconnecting: isDisconnecting,
                   hasConfigs: hasConfigs,
                 ),
+              if (showCancel)
+                Positioned(
+                  bottom: -50,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: _isCancelling
+                            ? null
+                            : () async => _cancelCurrent(provider),
+                        child: AnimatedOpacity(
+                          duration: 200.ms,
+                          opacity: _isCancelling ? 0.5 : 1,
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.red.withOpacity(0.9),
+                              boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.35),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 7),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.25),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: _isCancelling
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(14),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -426,7 +541,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     return [AppTheme.disconnectedRed, AppTheme.disconnectedRed.withValues(alpha: 0.7)];
   }
 
-  IconData _getButtonIcon(bool isConnected, bool isConnecting, bool isConfiguring) {
+  IconData _getButtonIcon(bool isConnected, bool isConnecting, bool isConfiguring, bool isDisconnecting) {
+    if (isDisconnecting) return Icons.power_off;
     if (isConnecting || isConfiguring) return Icons.sync;
     return isConnected ? Icons.power_off : Icons.power_settings_new;
   }
@@ -436,7 +552,9 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     bool isConnecting,
     bool hasConfigs,
     bool isConfiguring,
+    bool isDisconnecting,
   ) {
+    if (isDisconnecting) return 'Disconnecting...';
     if (isConnecting) return 'Connecting...';
     if (isConfiguring) return 'در حال پیکربندی';
     if (isConnected) return 'Disconnect';
@@ -447,21 +565,24 @@ class _ConnectionButtonState extends State<ConnectionButton> {
     required bool isConnecting,
     required bool isConfiguring,
     required bool isConnected,
+    required bool isDisconnecting,
     required bool hasConfigs,
   }) {
     final core = Container(
-      width: widget.bigMode ? 160 : 140,
-      height: widget.bigMode ? 160 : 140,
+      width: widget.bigMode ? 185 : 165,
+      height: widget.bigMode ? 185 : 165,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: _getGradientColors(
-            isConnected,
-            isConnecting,
-            isConfiguring,
-          ),
+          colors: isDisconnecting
+              ? [Colors.orange, Colors.orange.withOpacity(0.7)]
+              : _getGradientColors(
+                  isConnected,
+                  isConnecting,
+                  isConfiguring,
+                ),
         ),
         boxShadow: [
           BoxShadow(
@@ -480,8 +601,8 @@ class _ConnectionButtonState extends State<ConnectionButton> {
         children: [
           // Inner glow effect
           Container(
-            width: widget.bigMode ? 150 : 130,
-            height: widget.bigMode ? 150 : 130,
+            width: widget.bigMode ? 170 : 150,
+            height: widget.bigMode ? 170 : 150,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
@@ -498,9 +619,9 @@ class _ConnectionButtonState extends State<ConnectionButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                _getButtonIcon(isConnected, isConnecting, isConfiguring),
+                _getButtonIcon(isConnected, isConnecting, isConfiguring, isDisconnecting),
                 color: Colors.white,
-                size: 50,
+                size: widget.bigMode ? 56 : 52,
               ),
               const SizedBox(height: 8),
               Text(
@@ -509,14 +630,26 @@ class _ConnectionButtonState extends State<ConnectionButton> {
                   isConnecting,
                   hasConfigs,
                   isConfiguring,
+                  isDisconnecting,
                 ),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (isConnecting || isConfiguring) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  'برای متوقف کردن فشار دهید',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
           ),
 
@@ -534,18 +667,24 @@ class _ConnectionButtonState extends State<ConnectionButton> {
       ),
     );
 
-    if (isConnecting || isConfiguring) {
+    if (isConnecting || isConfiguring || isDisconnecting) {
       return core
           .animate(onPlay: (c) => c.repeat(reverse: true))
-          .scaleXY(begin: 0.96, end: 1.03, duration: 800.ms, curve: Curves.easeInOut)
-          .shimmer(delay: 0.ms, duration: 1200.ms, colors: [
-            Colors.white.withOpacity(0.15),
+          .scaleXY(
+            begin: 0.96,
+            end: isDisconnecting ? 1.02 : 1.04,
+            duration: 850.ms,
+            curve: Curves.easeInOut,
+          )
+          .shimmer(delay: 0.ms, duration: 1300.ms, colors: [
+            Colors.white.withOpacity(0.18),
             Colors.transparent,
           ]);
     }
 
+    // Idle subtle breathing
     return core
-        .animate()
-        .scaleXY(begin: 0.98, end: 1.0, duration: 220.ms, curve: Curves.easeOutBack);
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(begin: 0.99, end: 1.01, duration: 1800.ms, curve: Curves.easeInOut);
   }
 }

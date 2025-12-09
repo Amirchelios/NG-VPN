@@ -197,6 +197,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   Timer? _connectionHealthTimer;
   int _connectionHealthFailures = 0;
   String? _healthMonitorConfigId;
+  // Disabled server removal/blacklist to avoid false positives on flaky networks.
+  final Set<String> _blockedAddresses = {};
+  final List<String> _preferredServers = [];
   bool _isPreconfiguring = false;
   String? _preselectedConfigId;
 
@@ -287,6 +290,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       // Load configurations first
       await loadConfigs();
       debugPrint('Loaded ${_configs.length} configs during initialization');
+      // Load blocked addresses (kept only for optional future use; not purging now)
+      await _loadBlockedAddresses();
+      await _loadPreferredServers();
 
       // Load subscriptions
       await loadSubscriptions();
@@ -962,6 +968,15 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     // Delay between attempts in seconds
     const int retryDelaySeconds = 2;
 
+    // Guard against invalid/empty configs that cause "url is invalid"
+    if ((config.fullConfig.isEmpty || config.fullConfig.trim().isEmpty) &&
+        config.address.isEmpty) {
+      _isConnecting = false;
+      _setError('کانفیگ انتخاب‌شده نامعتبر است.');
+      notifyListeners();
+      return;
+    }
+
     try {
       // Disconnect from current server if connected
       if (_v2rayService.activeConfig != null) {
@@ -1028,6 +1043,11 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
           if (e.toString().contains('timeout')) {
             lastError = 'Connection timeout on attempt $attempt: $e';
             debugPrint(lastError);
+          } else if (e.toString().contains('url is invalid')) {
+            lastError = 'Invalid config URL';
+            debugPrint(lastError);
+            // Do not retry on invalid URL
+            break;
           } else {
             lastError = 'Error on connection attempt $attempt: $e';
             debugPrint(lastError);
@@ -1057,6 +1077,8 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
               _configs[i].isConnected = false;
             }
           }
+          // Track preferred servers that worked
+          _rememberPreferred(config.id);
           _selectedConfig = config;
           _isProxyMode = _isProxyMode; // Update provider's proxy mode state
 
@@ -1171,18 +1193,25 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       );
 
       if (success) {
-        // Mark other configs as disconnected
-        for (int i = 0; i < _configs.length; i++) {
-          _configs[i].isConnected = false;
+        // Verify connectivity quickly to avoid hanging on bad raw config
+        final healthy = await _verifyConnectionQuality();
+        if (healthy) {
+          for (int i = 0; i < _configs.length; i++) {
+            _configs[i].isConnected = false;
+          }
+          smartConfig.isConnected = true;
+          // Keep smart selection separate from simple mode selection
+          _selectedConfig = null;
+          _startConnectionHealthMonitor(smartConfig);
+        } else {
+          await _v2rayService.disconnect();
+          // Smart mode: quiet failure, no user-facing error
         }
-        smartConfig.isConnected = true;
-        _selectedConfig = smartConfig;
-        _startConnectionHealthMonitor(smartConfig);
       } else {
-        _setError('Failed to start smart mode connection');
+        // Smart mode: quiet failure, no user-facing error
       }
     } catch (e) {
-      _setError('Smart mode error: $e');
+      debugPrint('Smart mode error: $e');
     } finally {
       _isConnecting = false;
       notifyListeners();
@@ -1250,13 +1279,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     }
   }
 
+  // Blacklist + removal disabled to avoid false positives on flaky networks.
   Future<void> _removeFaultyConfig(V2RayConfig config) async {
-    _configs.removeWhere((cfg) => cfg.id == config.id);
-    try {
-      await _v2rayService.saveConfigs(_configs);
-    } catch (e) {
-      debugPrint('Error saving configs after removing faulty server: $e');
-    }
+    // No-op
   }
 
   Future<bool> _connectToBestAvailableServer({Set<String>? excludeIds}) async {
@@ -1268,8 +1293,10 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       return false;
     }
 
+    final prioritized = _prioritizePreferred(candidates);
+
     final result = await AutoSelectUtil.runAutoSelect(
-      candidates,
+      prioritized,
       _v2rayService,
     );
 
@@ -1284,6 +1311,84 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     return true;
   }
 
+  List<V2RayConfig> _prioritizePreferred(List<V2RayConfig> list) {
+    if (_preferredServers.isEmpty) return list;
+    final preferredSet = _preferredServers.toSet();
+    final favs = list.where((c) => preferredSet.contains(c.id)).toList();
+    final rest = list.where((c) => !preferredSet.contains(c.id)).toList();
+    return [...favs, ...rest];
+  }
+
+  // Filtered list of ProxyCloud subscription configs excluding shadowsocks
+  List<V2RayConfig> _proxyCloudConfigs() {
+    final proxySub = _subscriptions.firstWhere(
+      (s) => s.name.toLowerCase().contains('proxycloud'),
+      orElse: () => Subscription(
+        id: '',
+        name: '',
+        url: '',
+        lastUpdated: DateTime.now(),
+        configIds: const [],
+      ),
+    );
+    if (proxySub.id.isEmpty) return [];
+    final ids = proxySub.configIds.toSet();
+    return _configs
+        .where(
+          (c) =>
+              ids.contains(c.id) &&
+              c.configType.toLowerCase() != 'shadowsocks' &&
+              c.fullConfig.trim().isNotEmpty,
+        )
+        .toList();
+  }
+
+  Future<AutoSelectResult> runSimpleAutoSelect({
+    AutoSelectCancellationToken? cancellationToken,
+    void Function(String message)? onStatusUpdate,
+  }) async {
+    final proxyCloudConfigs = _proxyCloudConfigs();
+    if (proxyCloudConfigs.isEmpty) {
+      return AutoSelectResult(
+        selectedConfig: null,
+        bestPing: null,
+        errorMessage: 'سرور معتبر در ساب ProxyCloud یافت نشد.',
+      );
+    }
+
+    return AutoSelectUtil.runAutoSelect(
+      proxyCloudConfigs,
+      _v2rayService,
+      onStatusUpdate: onStatusUpdate,
+      cancellationToken: cancellationToken,
+      fastMode: true,
+    );
+  }
+
+  void _rememberPreferred(String configId) async {
+    if (configId.isEmpty) return;
+    // Keep a small LRU-ish list (max 20) of successful configs
+    _preferredServers.remove(configId);
+    _preferredServers.insert(0, configId);
+    if (_preferredServers.length > 20) {
+      _preferredServers.removeRange(20, _preferredServers.length);
+    }
+    await _savePreferredServers();
+  }
+
+  Future<void> _loadPreferredServers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('preferred_servers') ?? [];
+    _preferredServers
+      ..clear()
+      ..addAll(list);
+  }
+
+  Future<void> _savePreferredServers() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('preferred_servers', _preferredServers);
+  }
+
   Future<void> _handleFailedServer(
     V2RayConfig config,
     String reason,
@@ -1292,11 +1397,23 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     if (_healthMonitorConfigId == config.id) {
       _stopConnectionHealthMonitor();
     }
+    // If smart mode fails, do not fall back to simple servers automatically.
+    if (config.id == V2RayProvider.smartModeConfigId) {
+      // Quietly stop; no user-facing error
+      notifyListeners();
+      return;
+    }
     await _removeFaultyConfig(config);
     await _connectToBestAvailableServer(excludeIds: {config.id});
   }
 
   void _startConnectionHealthMonitor(V2RayConfig config) {
+    // For smart mode (raw single config), skip health monitor to avoid
+    // switching to simple mode or blacklisting when internet briefly drops.
+    if (config.id == V2RayProvider.smartModeConfigId) {
+      _stopConnectionHealthMonitor();
+      return;
+    }
     _stopConnectionHealthMonitor();
     _healthMonitorConfigId = config.id;
     _connectionHealthFailures = 0;
@@ -1332,6 +1449,28 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     _connectionHealthTimer = null;
     _healthMonitorConfigId = null;
     _connectionHealthFailures = 0;
+    // When stopping monitor for smart mode, also clear selection to avoid
+    // interfering with simple mode button flows.
+    if (_selectedConfig?.id == V2RayProvider.smartModeConfigId) {
+      _selectedConfig = null;
+    }
+  }
+
+  void _purgeBlockedConfigs() {
+    // Blacklist/purge disabled intentionally.
+  }
+
+  Future<void> _loadBlockedAddresses() async {
+    // Kept for backward compatibility; ignored.
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('blocked_addresses') ?? [];
+    _blockedAddresses
+      ..clear()
+      ..addAll(list);
+  }
+
+  Future<void> _saveBlockedAddresses() async {
+    // No-op to avoid persisting false positives.
   }
 
   Future<void> _preselectBestServer() async {

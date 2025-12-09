@@ -1,0 +1,20 @@
+      if (success) {
+        // Verify connectivity quickly to avoid hanging on bad raw config
+        final healthy = await _verifyConnectionQuality();
+        if (healthy) {
+          for (int i = 0; i < _configs.length; i++) {
+            _configs[i].isConnected = false;
+          }
+          smartConfig.isConnected = true;
+          _selectedConfig = smartConfig;
+          _startConnectionHealthMonitor(smartConfig);
+        } else {
+          await _v2rayService.disconnect();
+          _setError('Smart mode connection unhealthy. لطفاً دوباره تلاش کنید.');
+        }
+      } else {
+        _setError('Failed to start smart mode connection. لطفاً دوباره تلاش کنید.');
+      }
+    } catch (e) {
+      debugPrint('Smart mode error: %s' % e)
+    } finally {
