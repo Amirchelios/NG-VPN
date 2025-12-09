@@ -28,6 +28,23 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshProfile() async {
+    if (_profile == null || _profile!.code.isEmpty) return;
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final fresh =
+          await ProfileManager.fetchProfileByCode(_profile!.code.trim());
+      if (fresh != null) {
+        _profile = fresh;
+        await ProfileManager.saveProfile(fresh);
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> setProfile(UserProfile profile) async {
     _profile = profile;
     await ProfileManager.saveProfile(profile);

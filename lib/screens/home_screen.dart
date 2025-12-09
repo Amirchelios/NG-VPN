@@ -430,52 +430,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 centerTitle: false,
                 actions: [
                   IconButton(
-                    icon: const Icon(Icons.auto_mode),
-                    onPressed: () async {
-                      final provider = Provider.of<V2RayProvider>(
-                        context,
-                        listen: false,
-                      );
-                      await _autoSelectAndConnect(provider);
-                    },
-                    tooltip: context.tr('server_selection.auto_select'),
-                  ),
-                  IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: () async {
-                      final provider = Provider.of<V2RayProvider>(
-                        context,
-                        listen: false,
-                      );
-
-                      // Show loading indicator
+                      final profileProvider =
+                          Provider.of<ProfileProvider>(context, listen: false);
+                      await profileProvider.refreshProfile();
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            context.tr('home.updating'),
+                            context.tr('home.updated'),
                           ),
                         ),
                       );
-
-                      // Subscriptions disabled
-                      // await provider.updateAllSubscriptions();
-                      provider.fetchNotificationStatus();
-
-                      // Show success message
-                      if (provider.errorMessage.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              context.tr('home.updated'),
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(provider.errorMessage)),
-                        );
-                        provider.clearError();
-                      }
                     },
                     tooltip: context.tr(TranslationKeys.homeRefresh),
                   ),
@@ -573,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            context.tr(TranslationKeys.homeYourProfile),
+            'پروفایل شما',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -625,11 +592,6 @@ class _HomeScreenState extends State<HomeScreen> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _buildProfileInfoChip(
-                icon: Icons.cloud_outlined,
-                label: 'کد فعال‌سازی',
-                value: profile?.code ?? '---',
-              ),
               _buildProfileInfoChip(
                 icon: Icons.layers_outlined,
                 label: 'وضعیت',

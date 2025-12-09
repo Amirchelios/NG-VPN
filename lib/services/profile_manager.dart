@@ -5,8 +5,9 @@ import '../models/user_profile.dart';
 
 class ProfileManager {
   static const String profilePrefsKey = 'user_profile';
+  // GitHub Pages URL (cache-busted via ?ts=... when fetching)
   static const String profileUrl =
-      'https://raw.githubusercontent.com/Amirchelios/NG_manager/refs/heads/main/control_user/user.json';
+      'https://amirchelios.github.io/NG_manager/user.json';
 
   static Future<UserProfile?> fetchProfileByCode(String code) async {
     final response = await http
