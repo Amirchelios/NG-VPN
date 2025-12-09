@@ -7,10 +7,8 @@ import '../utils/app_localizations.dart';
 import '../providers/language_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ip_info_screen.dart';
-import 'subscription_management_screen.dart';
 import 'vpn_settings_screen.dart';
 import 'per_app_tunnel_screen.dart';
-import 'wallpaper_store_screen.dart';
 import 'battery_settings_screen.dart';
 import 'language_settings_screen.dart';
 
@@ -85,21 +83,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
                 ),
                 _buildToolCard(
                   context,
-                  title: context.tr(TranslationKeys.toolsSubscriptionManager),
-                  description: context.tr('tools.subscription_manager_desc'),
-                  icon: Icons.subscriptions,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const SubscriptionManagementScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
                   title: context.tr(TranslationKeys.toolsIpInformation),
                   description: context.tr('tools.ip_information_desc'),
                   icon: Icons.public,
@@ -123,20 +106,6 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const PerAppTunnelScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildToolCard(
-                  context,
-                  title: context.tr(TranslationKeys.toolsWallpaperStore),
-                  description: context.tr('tools.wallpaper_store_desc'),
-                  icon: Icons.store,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WallpaperStoreScreen(),
                       ),
                     );
                   },

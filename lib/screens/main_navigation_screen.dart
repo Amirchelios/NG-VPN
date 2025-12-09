@@ -9,7 +9,6 @@ import '../widgets/error_snackbar.dart';
 import 'home_screen.dart';
 import 'telegram_proxy_screen.dart';
 import 'tools_screen.dart';
-import 'store_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -19,11 +18,10 @@ class MainNavigationScreen extends StatefulWidget {
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
+int _currentIndex = 0;
   final List<Widget> _screens = [
     const HomeScreen(),
     const TelegramProxyScreen(),
-    const SizedBox.shrink(), // Store tab disabled
     const ToolsScreen(),
   ];
 
@@ -116,8 +114,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: BottomNavigationBar(
                 currentIndex: _currentIndex,
                 onTap: (index) {
-                  // Skip disabled store tab
-                  if (index == 2) return;
                   setState(() => _currentIndex = index);
                 },
                 backgroundColor: AppTheme.surfaceContainer,
@@ -157,29 +153,15 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                             : Colors.transparent,
                       ),
                       child: const Icon(Icons.telegram_rounded),
-                  ),
-                  label: context.tr(TranslationKeys.navProxy),
-                ),
-                BottomNavigationBarItem(
-                  icon: Container(
-                    padding: const EdgeInsets.all(4.0),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.transparent,
                     ),
-                    child: Icon(
-                      Icons.storefront_rounded,
-                      color: Colors.grey.withOpacity(0.4),
-                    ),
+                    label: context.tr(TranslationKeys.navProxy),
                   ),
-                  label: '${context.tr(TranslationKeys.navStore)} (غیرفعال)',
-                ),
                   BottomNavigationBarItem(
                     icon: Container(
                       padding: const EdgeInsets.all(4.0),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _currentIndex == 3
+                        color: _currentIndex == 2
                             ? AppTheme.primaryBlue.withOpacity(0.2)
                             : Colors.transparent,
                       ),

@@ -187,6 +187,12 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   bool statusPingOnly = false;
   List<V2RayConfig> _configs = [];
   List<Subscription> _subscriptions = [];
+  // Filtered view (no shadowsocks / empty configs)
+  List<V2RayConfig> get filteredConfigs => _configs
+      .where((c) =>
+          c.configType.toLowerCase() != 'shadowsocks' &&
+          c.fullConfig.trim().isNotEmpty)
+      .toList();
   V2RayConfig? _selectedConfig;
   bool _isConnecting = false;
   bool _isLoading = false;
@@ -524,66 +530,39 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
   Future<void> loadSubscriptions() async {
     _setLoading(true);
     try {
-      _subscriptions = await _v2rayService.loadSubscriptions();
-      
-      // Debug information
-      debugPrint('Loaded ${_subscriptions.length} subscriptions');
-      for (var sub in _subscriptions) {
-        debugPrint('  Subscription: ${sub.name} with ${sub.configIds.length} configs');
+      final resp = await http.get(
+        Uri.parse(
+          'https://raw.githubusercontent.com/Amirchelios/NG_manager/refs/heads/main/sl.txt',
+        ),
+      );
+      if (resp.statusCode != 200) {
+        _setError('Failed to fetch master subscription list');
+        _setLoading(false);
+        return;
       }
 
-      // Create default subscription if no subscriptions exist
-      if (_subscriptions.isEmpty) {
-        final defaultSubscription = Subscription(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: 'Default Subscription',
-          url:
-              'https://raw.githubusercontent.com/darkvpnapp/CloudflarePlus/refs/heads/main/proxy',
-          lastUpdated: DateTime.now(),
-          configIds: [],
-        );
-        _subscriptions.add(defaultSubscription);
-        await _v2rayService.saveSubscriptions(_subscriptions);
-        debugPrint('Created default subscription');
-      }
+      final lines = resp.body
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
 
-      // Ensure configs are loaded and match subscription config IDs
-      if (_configs.isEmpty) {
-        _configs = await _v2rayService.loadConfigs();
-        debugPrint('Loaded ${_configs.length} configs');
-      }
+      _subscriptions = [
+        for (int i = 0; i < lines.length; i++)
+          Subscription(
+            id: 'master-$i',
+            name: 'Master ${i + 1}',
+            url: lines[i],
+            lastUpdated: DateTime.now(),
+            configIds: const [],
+          ),
+      ];
 
-      // Verify that all subscription config IDs exist in the configs list
-      // If not, it means the configs weren't properly saved or loaded
-      for (var subscription in _subscriptions) {
-        final configIds = subscription.configIds;
-        final existingConfigIds = _configs.map((c) => c.id).toSet();
-        
-        debugPrint('Subscription "${subscription.name}" has ${configIds.length} config IDs, ${existingConfigIds.length} existing configs');
+      _configs.clear();
 
-        // Check if any config IDs in the subscription are missing from the configs list
-        final missingConfigIds = configIds
-            .where((id) => !existingConfigIds.contains(id))
-            .toList();
-
-        if (missingConfigIds.isNotEmpty) {
-          debugPrint(
-            'Warning: Found ${missingConfigIds.length} missing configs for subscription ${subscription.name}: $missingConfigIds',
-          );
-          // Update the subscription to remove missing config IDs
-          final updatedConfigIds = configIds
-              .where((id) => existingConfigIds.contains(id))
-              .toList();
-          final index = _subscriptions.indexWhere(
-            (s) => s.id == subscription.id,
-          );
-          if (index != -1) {
-            _subscriptions[index] = subscription.copyWith(
-              configIds: updatedConfigIds,
-            );
-            debugPrint('Updated subscription "${subscription.name}" to have ${updatedConfigIds.length} config IDs');
-          }
-        }
+      // Fetch each subscription sequentially (filtered inside updateSubscription)
+      for (final sub in _subscriptions) {
+        await updateSubscription(sub);
       }
 
       notifyListeners();
@@ -760,7 +739,14 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       final configs = await _v2rayService.parseSubscriptionUrl(
         subscription.url,
       );
-      if (configs.isEmpty) {
+      // Filter out shadowsocks / empty configs
+      final filtered = configs
+          .where((c) =>
+              c.configType.toLowerCase() != 'shadowsocks' &&
+              c.fullConfig.trim().isNotEmpty)
+          .toList();
+
+      if (filtered.isEmpty) {
         _setError('No valid configurations found in subscription');
         _isLoadingServers = false;
         notifyListeners();
@@ -776,9 +762,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       _configs.removeWhere((c) => subscription.configIds.contains(c.id));
 
       // Add new configs and display them immediately
-      _configs.addAll(configs);
+      _configs.addAll(filtered);
 
-      final newConfigIds = configs.map((c) => c.id).toList();
+      final newConfigIds = filtered.map((c) => c.id).toList();
 
       // Update subscription
       final index = _subscriptions.indexWhere((s) => s.id == subscription.id);
@@ -1319,45 +1305,28 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     return [...favs, ...rest];
   }
 
-  // Filtered list of ProxyCloud subscription configs excluding shadowsocks
-  List<V2RayConfig> _proxyCloudConfigs() {
-    final proxySub = _subscriptions.firstWhere(
-      (s) => s.name.toLowerCase().contains('proxycloud'),
-      orElse: () => Subscription(
-        id: '',
-        name: '',
-        url: '',
-        lastUpdated: DateTime.now(),
-        configIds: const [],
-      ),
-    );
-    if (proxySub.id.isEmpty) return [];
-    final ids = proxySub.configIds.toSet();
-    return _configs
-        .where(
-          (c) =>
-              ids.contains(c.id) &&
-              c.configType.toLowerCase() != 'shadowsocks' &&
-              c.fullConfig.trim().isNotEmpty,
-        )
-        .toList();
+  // Filtered list from all subscriptions (no shadowsocks)
+  List<V2RayConfig> _masterFilteredConfigs() {
+    final allIds = _subscriptions.expand((s) => s.configIds).toSet();
+    if (allIds.isEmpty) return filteredConfigs;
+    return filteredConfigs.where((c) => allIds.contains(c.id)).toList();
   }
 
   Future<AutoSelectResult> runSimpleAutoSelect({
     AutoSelectCancellationToken? cancellationToken,
     void Function(String message)? onStatusUpdate,
   }) async {
-    final proxyCloudConfigs = _proxyCloudConfigs();
-    if (proxyCloudConfigs.isEmpty) {
+    final master = _masterFilteredConfigs();
+    if (master.isEmpty) {
       return AutoSelectResult(
         selectedConfig: null,
         bestPing: null,
-        errorMessage: 'سرور معتبر در ساب ProxyCloud یافت نشد.',
+        errorMessage: 'سرور معتبر در ساب‌ها یافت نشد.',
       );
     }
 
     return AutoSelectUtil.runAutoSelect(
-      proxyCloudConfigs,
+      master,
       _v2rayService,
       onStatusUpdate: onStatusUpdate,
       cancellationToken: cancellationToken,

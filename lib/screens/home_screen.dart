@@ -15,7 +15,6 @@ import 'about_screen.dart';
 import '../services/v2ray_service.dart';
 import '../services/wallpaper_service.dart';
 import '../utils/auto_select_util.dart';
-import 'subscription_management_screen.dart';
 import 'profile_activation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -453,13 +452,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            context.tr('home.updating_subscriptions'),
+                            context.tr('home.updating'),
                           ),
                         ),
                       );
 
-                      // Update all subscriptions instead of just fetching servers
-                      await provider.updateAllSubscriptions();
+                      // Subscriptions disabled
+                      // await provider.updateAllSubscriptions();
                       provider.fetchNotificationStatus();
 
                       // Show success message
@@ -467,7 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              context.tr('home.subscriptions_updated'),
+                              context.tr('home.updated'),
                             ),
                           ),
                         );
@@ -479,19 +478,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       }
                     },
                     tooltip: context.tr(TranslationKeys.homeRefresh),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.subscriptions),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const SubscriptionManagementScreen(),
-                        ),
-                      );
-                    },
-                    tooltip: context.tr(TranslationKeys.homeSubscriptions),
                   ),
                 ],
               ),

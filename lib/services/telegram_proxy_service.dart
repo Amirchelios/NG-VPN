@@ -26,7 +26,13 @@ class TelegramProxyService {
           );
 
       if (response.statusCode == 200) {
-        final proxies = parseTelegramProxies(response.body);
+        final proxies = parseTelegramProxies(response.body)
+            .where((p) =>
+                p.host.isNotEmpty &&
+                p.port > 0 &&
+                p.secret.isNotEmpty &&
+                !p.secret.contains('ss')) // exclude shadowsocks-like entries
+            .toList();
         return _measureAndSortProxies(proxies);
       } else {
         throw Exception('Failed to load proxies: ${response.statusCode}');
@@ -48,7 +54,7 @@ class TelegramProxyService {
     );
     final measuredTargets = await Future.wait(futures);
     final combined = [
-      ...measuredTargets,
+      ...measuredTargets.where((p) => (p.measuredPing ?? -1) > 0),
       ...proxies.skip(_maxMeasuredTargets),
     ];
     combined.sort((a, b) {

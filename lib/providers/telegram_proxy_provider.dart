@@ -20,6 +20,9 @@ class TelegramProxyProvider extends ChangeNotifier {
 
     try {
       _proxies = await _proxyService.fetchProxies();
+      if (_proxies.isEmpty) {
+        _errorMessage = 'هیچ پروکسی معتبر تلگرام پیدا نشد';
+      }
       _isLoading = false;
       notifyListeners();
     } catch (e) {
