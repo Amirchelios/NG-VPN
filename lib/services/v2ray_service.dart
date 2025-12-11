@@ -76,6 +76,10 @@ class V2RayService extends ChangeNotifier {
   final Map<String, int?> _pingCache = {};
   final Map<String, bool> _pingInProgress = {};
 
+  // Proxy testing state
+  bool _isTestingProxy = false;
+  V2RayConfig? _proxyTestConfig;
+
   // App list cache
   List<Map<String, dynamic>>? _cachedAppList;
   DateTime? _lastAppListFetch;
@@ -432,7 +436,9 @@ class V2RayService extends ChangeNotifier {
       try {
         await disconnect();
       } catch (disconnectError) {
-        debugPrint('Error cleaning up after raw connection failure: $disconnectError');
+        debugPrint(
+          'Error cleaning up after raw connection failure: $disconnectError',
+        );
       }
       return false;
     }
@@ -656,15 +662,15 @@ class V2RayService extends ChangeNotifier {
         }
 
         final parser = V2ray.parseFromURL(config.fullConfig);
-      final delay = await _flutterV2ray
-          .getServerDelay(config: parser.getFullConfiguration())
-          .timeout(
-            const Duration(seconds: 2), // Faster timeout
-            onTimeout: () {
-              debugPrint('V2Ray ping timeout for ${config.remark}');
-              throw Exception('V2Ray ping timeout');
-            },
-          );
+        final delay = await _flutterV2ray
+            .getServerDelay(config: parser.getFullConfiguration())
+            .timeout(
+              const Duration(seconds: 2), // Faster timeout
+              onTimeout: () {
+                debugPrint('V2Ray ping timeout for ${config.remark}');
+                throw Exception('V2Ray ping timeout');
+              },
+            );
 
         // Check for cancellation after getting delay
         if (cancellationToken?.isCancelled == true) {
@@ -1218,7 +1224,9 @@ class V2RayService extends ChangeNotifier {
 
       for (final config in configs) {
         futures.add(
-          _pingSingleServerFast(config).then((delay) => MapEntry(config.id, delay)),
+          _pingSingleServerFast(
+            config,
+          ).then((delay) => MapEntry(config.id, delay)),
         );
       }
 
@@ -1247,7 +1255,8 @@ class V2RayService extends ChangeNotifier {
   }
 
   /// Helper method to ping a single server with optimized settings for speed
-  Future<int> _pingSingleServerFast(V2RayConfig config) async { // Changed from Future<int?> to Future<int>
+  Future<int> _pingSingleServerFast(V2RayConfig config) async {
+    // Changed from Future<int?> to Future<int>
     try {
       await initialize();
 
@@ -1255,18 +1264,88 @@ class V2RayService extends ChangeNotifier {
       final delay = await _flutterV2ray
           .getServerDelay(config: parser.getFullConfiguration())
           .timeout(
-            const Duration(seconds: 2), // Further reduced timeout for maximum speed
+            const Duration(
+              seconds: 2,
+            ), // Further reduced timeout for maximum speed
             onTimeout: () {
               debugPrint('V2Ray fast ping timeout for ${config.remark}');
               return -1; // Return -1 on timeout for faster failure
             },
           );
 
-      return delay >= -1 && delay < 10000 ? delay : -1; // Return -1 for invalid results
+      return delay >= -1 && delay < 10000
+          ? delay
+          : -1; // Return -1 for invalid results
     } catch (e) {
       debugPrint('Error fast pinging server ${config.remark}: $e');
       return -1; // Return -1 on error for consistency
     }
+  }
+
+  /// Test servers using proxy mode without connecting to VPN
+  /// Returns the best server or null if none are suitable
+  Future<V2RayConfig?> testServersWithProxy(List<V2RayConfig> configs) async {
+    if (configs.isEmpty) return null;
+    if (_isTestingProxy) {
+      debugPrint('Proxy testing already in progress');
+      return null;
+    }
+
+    try {
+      _isTestingProxy = true;
+      _proxyTestConfig = null;
+
+      debugPrint('Starting proxy testing for ${configs.length} servers');
+
+      // Test each server with proxy mode
+      final Map<String, int?> pingResults = await batchPingServers(configs);
+
+      V2RayConfig? bestConfig;
+      int? bestLatency;
+
+      for (final config in configs) {
+        final latency = pingResults[config.id];
+        if (latency != null && latency > 0 && latency < 10000) {
+          if (bestLatency == null || latency < bestLatency) {
+            bestLatency = latency;
+            bestConfig = config;
+          }
+        }
+      }
+
+      if (bestConfig != null) {
+        debugPrint(
+          'Found best server: ${bestConfig.remark} with latency ${bestLatency}ms',
+        );
+        _proxyTestConfig = bestConfig;
+      } else {
+        debugPrint('No suitable server found during proxy testing');
+      }
+
+      return bestConfig;
+    } catch (e) {
+      debugPrint('Error during proxy testing: $e');
+      return null;
+    } finally {
+      _isTestingProxy = false;
+    }
+  }
+
+  /// Check if currently in proxy testing mode
+  bool get isTestingProxy => _isTestingProxy;
+
+  /// Get the config that was selected during proxy testing
+  V2RayConfig? get proxyTestConfig => _proxyTestConfig;
+
+  /// Connect to the best server found during proxy testing
+  Future<bool> connectToBestServer() async {
+    if (_proxyTestConfig == null) {
+      debugPrint('No server selected from proxy testing');
+      return false;
+    }
+
+    debugPrint('Connecting to best server: ${_proxyTestConfig!.remark}');
+    return await connect(_proxyTestConfig!, false);
   }
 
   /// Get fastest server from a list of configs
