@@ -11,6 +11,7 @@ import 'vpn_settings_screen.dart';
 import 'per_app_tunnel_screen.dart';
 import 'battery_settings_screen.dart';
 import 'language_settings_screen.dart';
+import 'server_preferences_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   const ToolsScreen({super.key});
@@ -134,6 +135,20 @@ class _ToolsScreenState extends State<ToolsScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const BatterySettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildToolCard(
+                  context,
+                  title: 'مدیریت سرورها',
+                  description: 'سرورهای لایک و دیسلایک شده را مدیریت کنید',
+                  icon: Icons.favorite_border,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ServerPreferencesScreen(),
                       ),
                     );
                   },

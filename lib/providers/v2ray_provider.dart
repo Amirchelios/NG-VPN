@@ -8,6 +8,7 @@ import '../models/v2ray_config.dart';
 import '../models/subscription.dart';
 import '../services/v2ray_service.dart';
 import '../services/server_service.dart';
+import '../services/server_preference_service.dart';
 import '../utils/auto_select_util.dart';
 
 class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
@@ -184,6 +185,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 }''';
   final V2RayService _v2rayService = V2RayService();
   final ServerService _serverService = ServerService();
+  final ServerPreferenceService _preferenceService = ServerPreferenceService();
   bool statusPingOnly = false;
   List<V2RayConfig> _configs = [];
   List<Subscription> _subscriptions = [];
@@ -243,6 +245,80 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     // Set up method channel handler
     platform.setMethodCallHandler(_handleMethodCall);
   }
+
+  // --- Start of New Methods for Server Preferences ---
+
+  Future<void> likeActiveServer() async {
+    if (activeConfig != null) {
+      await _preferenceService.likeServer(activeConfig!.id);
+      notifyListeners(); // Notify UI to rebuild
+    }
+  }
+
+  Future<void> dislikeActiveServer() async {
+    if (activeConfig != null) {
+      final String serverIdToDislike = activeConfig!.id;
+      await _preferenceService.dislikeServer(serverIdToDislike);
+      notifyListeners(); // Update UI to show it's disliked
+
+      // Find and connect to the next best server
+      await _findAndConnectNextBest();
+    }
+  }
+
+  Future<void> _findAndConnectNextBest() async {
+    _isConnecting = true;
+    notifyListeners();
+
+    try {
+      // Disconnect from current server if connected
+      if (_v2rayService.activeConfig != null) {
+        await _v2rayService.disconnect();
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+
+      // Run auto-select. It will automatically filter disliked servers.
+      final result = await runSimpleAutoSelect();
+
+      if (result.selectedConfig != null) {
+        // Connect to the new best server
+        await connectToServer(result.selectedConfig!, _isProxyMode);
+      } else {
+        // No other server found, just remain disconnected
+        _setError(result.errorMessage ?? 'سرور مناسب دیگری یافت نشد.');
+        _isConnecting = false;
+        // We need to call notifyListeners here because connectToServer does it, but this path doesn't.
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError('خطا در یافتن سرور بعدی: $e');
+      _isConnecting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> clearServerPreferenceById(String serverId) async {
+    await _preferenceService.clearServerPreference(serverId);
+    notifyListeners();
+  }
+
+  Future<Set<String>> getLikedServerIds() {
+    return _preferenceService.getLikedServers();
+  }
+
+  Future<Set<String>> getDislikedServerIds() {
+    return _preferenceService.getDislikedServers();
+  }
+
+  Future<bool> isServerLiked(String serverId) {
+    return _preferenceService.isLiked(serverId);
+  }
+
+  Future<bool> isServerDisliked(String serverId) {
+    return _preferenceService.isDisliked(serverId);
+  }
+
+  // --- End of New Methods ---
 
   // Handle method calls from native side
   Future<dynamic> _handleMethodCall(MethodCall call) async {
@@ -1325,8 +1401,41 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       );
     }
 
+    // --- Start of Preference Logic ---
+    onStatusUpdate?.call('در حال اعمال اولویت‌بندی سرورها...');
+    final dislikedServers = await _preferenceService.getDislikedServers();
+    final likedServers = await _preferenceService.getLikedServers();
+
+    // 1. Filter out disliked servers
+    final availableConfigs =
+        master.where((c) => !dislikedServers.contains(c.id)).toList();
+
+    if (availableConfigs.isEmpty) {
+      return AutoSelectResult(
+        selectedConfig: null,
+        bestPing: null,
+        errorMessage: 'هیچ سرور مناسبی (بعد از فیلتر) یافت نشد.',
+      );
+    }
+
+    // 2. Prioritize liked servers
+    final liked = <V2RayConfig>[];
+    final others = <V2RayConfig>[];
+
+    for (final config in availableConfigs) {
+      if (likedServers.contains(config.id)) {
+        liked.add(config);
+      } else {
+        others.add(config);
+      }
+    }
+
+    final prioritizedConfigs = [...liked, ...others];
+    onStatusUpdate?.call('اولویت‌بندی انجام شد. شروع تست پینگ...');
+    // --- End of Preference Logic ---
+
     return AutoSelectUtil.runAutoSelect(
-      master,
+      prioritizedConfigs, // Use the new prioritized list
       _v2rayService,
       onStatusUpdate: onStatusUpdate,
       cancellationToken: cancellationToken,

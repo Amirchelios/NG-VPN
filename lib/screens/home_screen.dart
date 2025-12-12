@@ -958,21 +958,107 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildConnectedStateUI(V2RayProvider provider) {
+    final activeId = provider.activeConfig?.id;
+    if (activeId == null || activeId == V2RayProvider.smartModeConfigId) {
+      // For smart mode or if somehow null, show the normal button
+      return ConnectionButton(
+        onFocused: () {
+          setState(() => _connectMode = _ConnectMode.simple);
+        },
+        bigMode: true,
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Like/Dislike buttons on the left
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FutureBuilder<bool>(
+              future: provider.isServerLiked(activeId),
+              builder: (context, snapshot) {
+                final isLiked = snapshot.data == true;
+                return IconButton(
+                  icon: Icon(
+                    isLiked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                    color: isLiked ? AppTheme.primaryGreen : Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    provider.likeActiveServer();
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            FutureBuilder<bool>(
+              future: provider.isServerDisliked(activeId),
+              builder: (context, snapshot) {
+                final isDisliked = snapshot.data == true;
+                return IconButton(
+                  icon: Icon(
+                    isDisliked
+                        ? Icons.thumb_down_alt
+                        : Icons.thumb_down_alt_outlined,
+                    color:
+                        isDisliked ? AppTheme.disconnectedRed : Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    provider.dislikeActiveServer();
+                    // Show a snackbar to inform the user
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('سرور دیسلایک شد. در حال جستجو برای سرور بعدی...'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(width: 20), // Spacing
+        // Connection button shifted to the right
+        Padding(
+          padding: const EdgeInsets.only(left: 30.0), // Shift to the right
+          child: ConnectionButton(
+            onFocused: () {
+              setState(() => _connectMode = _ConnectMode.simple);
+            },
+            bigMode: true,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAnimatedConnectArea() {
     final provider = context.watch<V2RayProvider>();
     final isSmartActive =
         provider.activeConfig?.id == V2RayProvider.smartModeConfigId;
     final isConnecting = provider.isConnecting;
-    final isAnyConnected = provider.activeConfig != null || isConnecting;
+    final isAnyConnected = provider.activeConfig != null && !isConnecting;
+
+    // If connected via simple mode, show the new UI
+    if (isAnyConnected && !isSmartActive) {
+      return _buildConnectedStateUI(provider);
+    }
 
     // Keep UI focus consistent with actual state
     final focusedMode = isSmartActive
         ? _ConnectMode.smart
-        : isAnyConnected
+        : (provider.activeConfig != null || isConnecting)
             ? _ConnectMode.simple
             : _connectMode;
 
-    final bool showDual = focusedMode == _ConnectMode.none;
+    final bool showDual = focusedMode == _ConnectMode.none && !isConnecting;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
@@ -982,8 +1068,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ? Wrap(
               key: const ValueKey('dual'),
               alignment: WrapAlignment.center,
-                spacing: 12,
-                runSpacing: 10,
+              spacing: 12,
+              runSpacing: 10,
               children: [
                 Column(
                   mainAxisSize: MainAxisSize.min,

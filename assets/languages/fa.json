@@ -47,7 +47,14 @@
         "update_available": "بروزرسانی برنامه موجود است",
         "new_version": "نسخه جدید: {version}",
         "current_version": "نسخه فعلی: {version}",
-        "update_now": "اکنون بروزرسانی کن"
+        "update_now": "اکنون بروزرسانی کن",
+        "manage_servers": "مدیریت سرورها",
+        "manage_servers_desc": "سرورهای لایک و دیسلایک شده را مدیریت کنید",
+        "liked_servers": "سرورهای لایک شده",
+        "disliked_servers": "سرورهای دیسلایک شده",
+        "no_servers_found": "هیچ سروری در این لیست وجود ندارد.",
+        "remove_preference": "حذف از لیست",
+        "server_preference_cleared": "انتخاب سرور پاک شد."
     },
     "language_settings": {
         "title": "تنظیمات زبان",
