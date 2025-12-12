@@ -18,7 +18,7 @@ import '../utils/auto_select_util.dart';
 import 'profile_activation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

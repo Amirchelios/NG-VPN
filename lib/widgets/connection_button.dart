@@ -12,10 +12,10 @@ class ConnectionButton extends StatefulWidget {
   final bool bigMode;
 
   const ConnectionButton({
-    Key? key,
+    super.key,
     this.onFocused,
     this.bigMode = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ConnectionButton> createState() => _ConnectionButtonState();

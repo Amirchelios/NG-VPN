@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/app_localizations.dart';
 
 class ServerPreferencesScreen extends StatelessWidget {
-  const ServerPreferencesScreen({Key? key}) : super(key: key);
+  const ServerPreferencesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

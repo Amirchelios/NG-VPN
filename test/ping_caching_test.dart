@@ -34,16 +34,16 @@ void main() {
       v2rayService.clearPingCache(); // Clear any existing cache
       
       // Set different ping values for each config
-      v2rayService._pingCache['config1'] = 50;
-      v2rayService._pingCache['config2'] = 100;
+      v2rayService.pingCache['config1'] = 50;
+      v2rayService.pingCache['config2'] = 100;
       
       // Verify that each config gets its own ping value
-      expect(v2rayService._pingCache['config1'], equals(50));
-      expect(v2rayService._pingCache['config2'], equals(100));
+      expect(v2rayService.pingCache['config1'], equals(50));
+      expect(v2rayService.pingCache['config2'], equals(100));
       
       // Verify that configs with same IP but different IDs don't interfere
-      expect(v2rayService._pingCache['config1'], 
-             isNot(equals(v2rayService._pingCache['config2'])));
+      expect(v2rayService.pingCache['config1'], 
+             isNot(equals(v2rayService.pingCache['config2'])));
     });
   });
 }

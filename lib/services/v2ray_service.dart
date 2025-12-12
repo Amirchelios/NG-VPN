@@ -73,7 +73,8 @@ class V2RayService extends ChangeNotifier {
   Timer? _usageStatsTimer;
 
   // Ping cache
-  final Map<String, int?> _pingCache = {};
+  @visibleForTesting
+  final Map<String, int?> pingCache = {};
   final Map<String, bool> _pingInProgress = {};
 
   // Proxy testing state
@@ -144,9 +145,9 @@ class V2RayService extends ChangeNotifier {
   // Clear ping cache for all configs or a specific config
   void clearPingCache({String? configId}) {
     if (configId != null) {
-      _pingCache.remove(configId);
+      pingCache.remove(configId);
     } else {
-      _pingCache.clear();
+      pingCache.clear();
     }
     // No need to clear native ping service cache since we're not using it anymore
   }
@@ -323,7 +324,7 @@ class V2RayService extends ChangeNotifier {
 
       // Fetch IP information after a 2-second delay to ensure connection is stable
       Future.delayed(const Duration(seconds: 2), () {
-        fetchIpInfo()
+        fetchIpInfo() 
             .then((ipInfo) {
               debugPrint(
                 'IP Info fetched after connection: ${ipInfo.ip} - ${ipInfo.country}',
@@ -419,7 +420,7 @@ class V2RayService extends ChangeNotifier {
 
       // Fetch IP information after a short delay to ensure connection is stable
       Future.delayed(const Duration(seconds: 2), () {
-        fetchIpInfo()
+        fetchIpInfo() 
             .then((ipInfo) {
               debugPrint(
                 'IP Info fetched after raw connect: ${ipInfo.ip} - ${ipInfo.country}',
@@ -619,8 +620,8 @@ class V2RayService extends ChangeNotifier {
       }
 
       // Return cached ping if available - check by configId only
-      if (_pingCache.containsKey(configId)) {
-        final cachedValue = _pingCache[configId];
+      if (pingCache.containsKey(configId)) {
+        final cachedValue = pingCache[configId];
         // Check if cached value is not too old (15 seconds for faster refresh)
         if (cachedValue != null) {
           return cachedValue;
@@ -639,7 +640,7 @@ class V2RayService extends ChangeNotifier {
           await Future.delayed(const Duration(milliseconds: 200));
           attempts++;
         }
-        return _pingCache[configId];
+        return pingCache[configId];
       }
 
       // Mark this config as having ping in progress
@@ -680,28 +681,28 @@ class V2RayService extends ChangeNotifier {
 
         // Cache the result by config ID only
         if (delay >= -1 && delay < 10000) {
-          _pingCache[configId] = delay;
+          pingCache[configId] = delay;
 
           _pingInProgress[configId] = false;
 
           return delay;
         } else {
           _pingInProgress[configId] = false;
-          _pingCache[configId] = -1; // Changed from null to -1
+          pingCache[configId] = -1; // Changed from null to -1
           return -1; // Changed from null to -1
         }
       } catch (e) {
         debugPrint('Error with V2Ray ping for ${config.remark}: $e');
 
         _pingInProgress[configId] = false;
-        _pingCache[configId] = -1; // Changed from null to -1
+        pingCache[configId] = -1; // Changed from null to -1
         return -1; // Changed from null to -1
       }
     } catch (e) {
       debugPrint('Unexpected error in getServerDelay for ${config.remark}: $e');
       // Ensure cleanup even in unexpected errors
       _pingInProgress[configId] = false;
-      _pingCache[configId] = -1; // Changed from null to -1
+      pingCache[configId] = -1; // Changed from null to -1
       return -1; // Changed from null to -1
     }
   }
@@ -1244,7 +1245,7 @@ class V2RayService extends ChangeNotifier {
         configResults[result.key] = result.value;
 
         // Cache the result by config ID only
-        _pingCache[result.key] = result.value;
+        pingCache[result.key] = result.value;
       }
 
       return configResults;

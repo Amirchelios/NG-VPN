@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print, unused_element
+
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_v2ray_client/flutter_v2ray.dart';
@@ -259,7 +261,17 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     if (activeConfig != null) {
       final String serverIdToDislike = activeConfig!.id;
       await _preferenceService.dislikeServer(serverIdToDislike);
-      notifyListeners(); // Update UI to show it's disliked
+
+      // If the currently selected config is the one being disliked, clear it.
+      if (_selectedConfig?.id == serverIdToDislike) {
+        _selectedConfig = null;
+      }
+
+      notifyListeners(); // Update UI to show it's disliked and deselect
+
+      // After disliking a server, we need to find a new "best" server
+      // for the simple connect button. We run this in the background.
+      unawaited(_preselectBestServer());
 
       // Find and connect to the next best server
       await _findAndConnectNextBest();
@@ -284,14 +296,15 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
         // Connect to the new best server
         await connectToServer(result.selectedConfig!, _isProxyMode);
       } else {
-        // No other server found, just remain disconnected
+        // No other server found, clear selection and remain disconnected
         _setError(result.errorMessage ?? 'سرور مناسب دیگری یافت نشد.');
+        _selectedConfig = null;
         _isConnecting = false;
-        // We need to call notifyListeners here because connectToServer does it, but this path doesn't.
         notifyListeners();
       }
     } catch (e) {
       _setError('خطا در یافتن سرور بعدی: $e');
+      _selectedConfig = null;
       _isConnecting = false;
       notifyListeners();
     }
@@ -358,8 +371,6 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     _setLoading(true);
     _isInitializing = true; // Set initialization flag
     notifyListeners();
-
-    const updateInterval = Duration(hours: 24);
 
     try {
       await _v2rayService.initialize();
@@ -482,7 +493,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
           // Check if any config has connection details that match a running service
           for (var config in _configs) {
             try {
-              final parser = V2ray.parseFromURL(config.fullConfig);
+              V2ray.parseFromURL(config.fullConfig);
               // We can't directly ping without the service, so we'll mark the first one as connected
               config.isConnected = true;
               _selectedConfig = config;
@@ -1019,7 +1030,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     notifyListeners();
   }
 
-  Future<void> connectToServer(V2RayConfig config, bool _isProxyMode) async {
+  Future<void> connectToServer(V2RayConfig config, bool isProxyMode) async {
     _stopConnectionHealthMonitor();
     _isConnecting = true;
     _errorMessage = '';
@@ -1066,7 +1077,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 
           // Connect to server with timeout
           success = await _v2rayService
-              .connect(config, _isProxyMode)
+              .connect(config, isProxyMode)
               .timeout(
                 const Duration(seconds: 30), // Timeout for connection
                 onTimeout: () {
@@ -1134,7 +1145,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
             if (_configs[i].id == config.id) {
               _configs[i].isConnected = true;
               _configs[i].isProxyMode =
-                  _isProxyMode; // Update proxy mode status
+                  isProxyMode; // Update proxy mode status
             } else {
               _configs[i].isConnected = false;
             }
@@ -1142,7 +1153,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
           // Track preferred servers that worked
           _rememberPreferred(config.id);
           _selectedConfig = config;
-          _isProxyMode = _isProxyMode; // Update provider's proxy mode state
+          isProxyMode = isProxyMode; // Update provider's proxy mode state
 
           // Persist the changes with error handling
           try {
@@ -1348,8 +1359,9 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 
   Future<bool> _connectToBestAvailableServer({Set<String>? excludeIds}) async {
     final exclude = excludeIds ?? {};
+    final availableConfigs = await _getAvailableConfigs(_configs);
     final candidates =
-        _configs.where((cfg) => !exclude.contains(cfg.id)).toList();
+        availableConfigs.where((cfg) => !exclude.contains(cfg.id)).toList();
     if (candidates.isEmpty) {
       _setError('No other servers available to connect.');
       return false;
@@ -1383,9 +1395,7 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 
   // Filtered list from all subscriptions (no shadowsocks)
   List<V2RayConfig> _masterFilteredConfigs() {
-    final allIds = _subscriptions.expand((s) => s.configIds).toSet();
-    if (allIds.isEmpty) return filteredConfigs;
-    return filteredConfigs.where((c) => allIds.contains(c.id)).toList();
+    return filteredConfigs;
   }
 
   Future<AutoSelectResult> runSimpleAutoSelect({
@@ -1441,6 +1451,16 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
       cancellationToken: cancellationToken,
       fastMode: true,
     );
+  }
+
+  Future<List<V2RayConfig>> _getAvailableConfigs(
+    List<V2RayConfig> allConfigs,
+  ) async {
+    final dislikedServerIds = await _preferenceService.getDislikedServers();
+    if (dislikedServerIds.isEmpty) {
+      return allConfigs;
+    }
+    return allConfigs.where((c) => !dislikedServerIds.contains(c.id)).toList();
   }
 
   void _rememberPreferred(String configId) async {
@@ -1556,8 +1576,14 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
     _isPreconfiguring = true;
     notifyListeners();
     try {
+      final availableConfigs = await _getAvailableConfigs(_configs);
+      if (availableConfigs.isEmpty) {
+        _preselectedConfigId = null;
+        return;
+      }
+
       final result = await AutoSelectUtil.runAutoSelect(
-        _configs,
+        availableConfigs,
         _v2rayService,
         fastMode: true,
       ).timeout(const Duration(seconds: 5), onTimeout: () {
@@ -1570,13 +1596,11 @@ class V2RayProvider with ChangeNotifier, WidgetsBindingObserver {
 
       if (result.selectedConfig != null) {
         _preselectedConfigId = result.selectedConfig!.id;
-      } else if (_configs.isNotEmpty) {
-        _preselectedConfigId = _configs.first.id;
+      } else {
+        _preselectedConfigId = availableConfigs.first.id;
       }
     } catch (_) {
-      if (_configs.isNotEmpty) {
-        _preselectedConfigId = _configs.first.id;
-      }
+      _preselectedConfigId = null;
     } finally {
       _isPreconfiguring = false;
       notifyListeners();
