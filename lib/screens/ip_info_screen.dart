@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../providers/v2ray_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_localizations.dart';
 

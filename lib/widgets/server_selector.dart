@@ -7,7 +7,6 @@ import '../utils/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../screens/server_selection_screen.dart';
 import '../services/wallpaper_service.dart';
-import 'error_snackbar.dart';
 
 class ServerSelector extends StatelessWidget {
   const ServerSelector({super.key});
